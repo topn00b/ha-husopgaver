@@ -13,6 +13,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
+from homeassistant.const import WEEKDAYS
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.util import dt as dt_util
@@ -26,6 +27,7 @@ from .const import (
     LogAction,
 )
 from .coordinator import HusopgaverCoordinator, OccurrenceView
+from .models import Chore
 from .points import credited_entries, pending_entries, sum_points
 from .schedule import local_date, local_datetime, week_start
 
@@ -144,11 +146,40 @@ def build_payload(
         "loaded": True,
         "persons": persons,
         "items": items,
+        "chores": [_chore_config(chore) for chore in coordinator.chores.values()],
         "viewer": {
             "person_id": viewer.id if viewer else None,
             "can_approve": bool(viewer and viewer.can_approve),
         },
         "upcoming_days": upcoming.days,
+    }
+
+
+def _chore_config(chore: Chore) -> dict[str, Any]:
+    """Opgavens indstillinger i det format, kortets dialog redigerer."""
+    schedule = chore.schedule
+    return {
+        "id": chore.id,
+        "name": chore.name,
+        "description": chore.description,
+        "points": chore.points,
+        "assignees": list(chore.assignees),
+        "assignment": chore.assignment.value,
+        "repeat": schedule.kind.value,
+        "every": schedule.every,
+        "unit": None if schedule.unit is None else schedule.unit.value,
+        "from": None if schedule.from_ is None else schedule.from_.value,
+        "weekdays": [WEEKDAYS[d] for d in schedule.weekdays],
+        "dates": [f"{m:02d}-{d:02d}" for m, d in schedule.dates],
+        "due": None
+        if schedule.due is None
+        else dt_util.as_local(schedule.due).strftime("%Y-%m-%d %H:%M"),
+        "due_time": None if chore.due_time is None else chore.due_time.strftime("%H:%M"),
+        "notify_before": None
+        if chore.notify_before is None
+        else int(chore.notify_before.total_seconds() // 60),
+        "approval": chore.approval.value,
+        "has_condition": chore.condition is not None,
     }
 
 

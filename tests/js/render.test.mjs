@@ -10,11 +10,12 @@ globalThis.customElements = {
 };
 globalThis.HTMLElement = class {
   attachShadow() {
-    const listeners = [];
+    const listeners = { click: [], input: [] };
     this.shadowRoot = {
       innerHTML: "",
-      addEventListener: (type, fn) => listeners.push(fn),
-      click: (target) => listeners.forEach((fn) => fn({ target })),
+      addEventListener: (type, fn) => listeners[type].push(fn),
+      click: (target) => listeners.click.forEach((fn) => fn({ target })),
+      input: (target) => listeners.input.forEach((fn) => fn({ target })),
     };
     return this.shadowRoot;
   }
@@ -48,6 +49,9 @@ const PAYLOAD = {
     { id: "v1", name: "Voksen 1", color: null, active: true, week_points: 4, pending_points: 0 },
     { id: "b1", name: "Barn 1", color: "#ff8000", active: true, week_points: 1, pending_points: 2 },
   ],
+  chores: [
+    { id: "c1", name: "Opvask <b>", description: null, points: 2, assignees: ["v1"], assignment: "fixed", repeat: "interval", every: 1, unit: "day", from: "due", weekdays: [], dates: [], due: null, due_time: "18:00", notify_before: null, approval: "auto", has_condition: false },
+  ],
   items: [
     { uid: "c1|_shared|x", group: "today", chore_id: "c1", name: "Opvask <b>", key: "_shared", each: false, person_id: "v1", points: 2, due: NOW_ISO, has_time: true, status: "upcoming", condition_unknown: false, log_id: null },
     { uid: "c2|b1|x", group: "pending", chore_id: "c2", name: "Red seng", key: "b1", each: true, person_id: "b1", points: 2, due: "2026-06-09T22:00:00+00:00", has_time: false, status: "pending_approval", condition_unknown: false, log_id: "p1" },
@@ -56,6 +60,7 @@ const PAYLOAD = {
 };
 
 function makeCard(config = {}) {
+  localStorage.data = {};
   const Card = customElements.get("husopgaver-card");
   const card = new Card();
   const calls = [];
@@ -128,4 +133,61 @@ test("ikke sat op og indlæser", async () => {
   await new Promise((r) => setTimeout(r));
   push({ loaded: false, persons: [], items: [], viewer: {} });
   assert.match(card.shadowRoot.innerHTML, /ikke sat op/);
+});
+
+test("ny opgave fra kortet: knap, formular og create_chore", async () => {
+  const { card, calls, push } = makeCard();
+  await new Promise((r) => setTimeout(r));
+  push(PAYLOAD);
+  assert.match(card.shadowRoot.innerHTML, /data-action="new"/);
+  const target = (dataset) => ({ closest: () => ({ dataset }) });
+  card.shadowRoot.click(target({ action: "new" }));
+  let html = card.shadowRoot.innerHTML;
+  assert.match(html, /Hvad skal laves\?/);
+  assert.match(html, /Hver 2\. uge/);
+  // Gem uden navn giver en fejl i formularen.
+  card.shadowRoot.click(target({ action: "save" }));
+  assert.match(card.shadowRoot.innerHTML, /Skriv, hvad der skal laves/);
+  // Data, der kommer under redigering, tegner ikke formularen om.
+  card.shadowRoot.input({ dataset: { field: "name" }, value: "Vand blomster" });
+  push(PAYLOAD);
+  assert.match(card.shadowRoot.innerHTML, /Hvad skal laves\?/);
+  card.shadowRoot.click(target({ action: "toggle-person", person: "b1" }));
+  card.shadowRoot.click(target({ action: "toggle-person", person: "v1" }));
+  card.shadowRoot.click(target({ action: "set", field: "freq", value: "weekdays" }));
+  card.shadowRoot.click(target({ action: "toggle-day", value: "sat" }));
+  card.shadowRoot.click(target({ action: "points", delta: "1" }));
+  card.shadowRoot.click(target({ action: "save" }));
+  await new Promise((r) => setTimeout(r));
+  const [service, data] = calls.at(-1);
+  assert.equal(service, "create_chore");
+  assert.deepEqual(
+    [data.name, data.assignees, data.assignment, data.repeat, data.weekdays, data.points],
+    ["Vand blomster", ["b1", "v1"], "round_robin", "weekly", ["sat"], 2],
+  );
+  // Efter gem vises listen igen.
+  assert.match(card.shadowRoot.innerHTML, /Point denne uge/);
+});
+
+test("ret og slet en opgave", async () => {
+  const { card, calls, push } = makeCard();
+  await new Promise((r) => setTimeout(r));
+  push(PAYLOAD);
+  assert.match(card.shadowRoot.innerHTML, /data-action="edit" data-chore="c1"/);
+  const target = (dataset) => ({ closest: () => ({ dataset }) });
+  card.shadowRoot.click(target({ action: "edit", chore: "c1" }));
+  assert.match(card.shadowRoot.innerHTML, /Ret opgave/);
+  card.shadowRoot.click(target({ action: "delete" }));
+  assert.match(card.shadowRoot.innerHTML, /Tryk igen for at slette/);
+  assert.equal(calls.filter(([s]) => s === "delete_chore").length, 0);
+  card.shadowRoot.click(target({ action: "delete" }));
+  await new Promise((r) => setTimeout(r));
+  assert.deepEqual(calls.at(-1), ["delete_chore", { chore: "c1" }]);
+});
+
+test("redigering kan slås fra", async () => {
+  const { card, push } = makeCard({ allow_edit: false });
+  await new Promise((r) => setTimeout(r));
+  push(PAYLOAD);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="add"|data-chore=/);
 });

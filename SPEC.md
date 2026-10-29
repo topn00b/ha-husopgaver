@@ -273,6 +273,13 @@ Et eget Lovelace-kort, der følger med integrationen. Opdelingen er inspireret a
   - **Afkrydsning:** ét tryk på den store knap. Med et personfilter krediteres den valgte person, ellers den tildelte (samme regel som todo-listerne).
   - **Langt tryk eller menu:** spring over, udsæt, giv til en anden og fortryd.
   - Bruger de samme services som resten af integrationen, så godkendelse, spærringer og fejlbeskeder er de samme.
+- **Opret og ret opgaver i kortet:** Knappen "+ Ny opgave" øverst åbner en formular i kortet. Et tryk på en opgaves navn åbner samme formular med "Gem" og "Slet" (slet kræver to tryk). Det er hovedvejen til at oprette opgaver i hverdagen, for alle i familien; integrationens egne formularer er et alternativ.
+  - Felterne med almindelige ord: *Hvad skal laves?*, *Hvem?* (tryk på personerne), *Hvordan fordeles den?* (Skiftes, Færrest point, Altid den første, Alle hver for sig; kun når flere er valgt), *Hvor tit?* (Én gang, Hver dag, Bestemte dage, Hver uge, Hver 2. uge, Hver måned, Hvert år, Andet), dato eller ugedage efter behov, klokkeslæt (valgfrit) og point (− / +).
+  - Under "Flere valg": beskrivelse, påmindelse (ingen, 15 min, 30 min, 1 time før) og godkendelse.
+  - Standard for en ny opgave: hver uge, på skift, 1 point, den person, filteret står på.
+  - Én valgt person giver altid tildelingen "fast". En betingelse kan ikke sættes i kortet, men bevares, når opgaven rettes.
+  - Formularen bruger `create_chore`, `update_chore` og `delete_chore`. Data, der kommer, mens formularen er åben, tegner den ikke om.
+  - Kan slås fra per kort med `allow_edit: false`, fx på et dashboard kun til afkrydsning.
 - **Personfilter:** chips med "Alle" og hver person øverst. Valget huskes per enhed, så hvert familiemedlems telefon kan stå på sig selv.
 - **Pointtavle** (valgfri): ugens point per person, sorteret.
 - **Farver:** Hver person har en valgfri farve i person-formularen. Ellers bruges en fast palet efter rækkefølge. Kortet bruger HA's tema-variabler og virker i lyst og mørkt tema.

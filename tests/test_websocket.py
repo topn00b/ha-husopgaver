@@ -190,3 +190,33 @@ async def test_midnight_moves_groups(hass, setup, freezer) -> None:
     assert _groups(build_payload(coordinator, _local(6, 10, 12))) == {"upcoming": ["Fredag"]}
     await _tick(hass, freezer, _local(6, 12) + timedelta(minutes=1))
     assert _groups(build_payload(coordinator, _local(6, 12, 0, 1))) == {"today": ["Fredag"]}
+
+
+async def test_chore_configs_for_the_card(hass, setup) -> None:
+    coordinator = await setup(
+        {
+            "c1": _chore(due_time="18:00", notify_before=1800, schedule={"kind": "weekly", "weekdays": [0, 3]}),
+            "c2": _chore(name="Engang", schedule={"kind": "none", "due": _local(6, 12, 9).isoformat()}),
+        }
+    )
+    chores = {c["id"]: c for c in build_payload(coordinator, _local(6, 10, 12))["chores"]}
+    assert chores["c1"] == {
+        "id": "c1",
+        "name": "Tøm opvaskemaskinen",
+        "description": None,
+        "points": 2,
+        "assignees": ["v1", "v2"],
+        "assignment": "least_points",
+        "repeat": "weekly",
+        "every": None,
+        "unit": None,
+        "from": None,
+        "weekdays": ["mon", "thu"],
+        "dates": [],
+        "due": None,
+        "due_time": "18:00",
+        "notify_before": 30,
+        "approval": "auto",
+        "has_condition": False,
+    }
+    assert chores["c2"]["due"] == "2026-06-12 09:00"

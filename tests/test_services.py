@@ -195,3 +195,73 @@ class TestChoreCrud:
         coordinator = coordinator.entry.runtime_data
         assert coordinator.chores == {}
         assert len(coordinator.storage.log) == 1
+
+
+class TestFromTheCard:
+    """Præcis de kald, kortets formular laver (se tests/js/form.test.mjs)."""
+
+    async def test_create_weekdays_with_time_and_reminder(self, hass, setup) -> None:
+        coordinator = await setup({})
+        result = await _call(
+            hass,
+            "create_chore",
+            name="Støvsug",
+            assignees=["v1", "v2"],
+            points=1,
+            assignment="round_robin",
+            description=None,
+            due_time="18:00:00",
+            notify_before={"minutes": 30},
+            approval="auto",
+            repeat="weekly",
+            weekdays=["mon", "thu"],
+        )
+        chore = coordinator.entry.runtime_data.chores[result["chore_id"]]
+        assert chore.schedule.weekdays == (0, 3)
+        assert chore.notify_before == timedelta(minutes=30)
+        assert chore.due_time == time(18)
+
+    async def test_create_once(self, hass, setup) -> None:
+        coordinator = await setup({})
+        result = await _call(
+            hass,
+            "create_chore",
+            name="Ring til frisøren",
+            assignees=["v1"],
+            points=1,
+            assignment="fixed",
+            description=None,
+            due_time=None,
+            notify_before=None,
+            approval="auto",
+            repeat="none",
+            due="2026-06-12 00:00:00",
+        )
+        chore = coordinator.entry.runtime_data.chores[result["chore_id"]]
+        assert chore.schedule.due == _local(6, 12)
+        assert chore.due_time is None
+
+    async def test_update_keeps_condition(self, hass, setup) -> None:
+        condition = {"kind": "entity", "entity": "input_boolean.hjemme", "check_time": "14:00"}
+        coordinator = await setup({"c1": _chore(condition=condition)})
+        await _call(
+            hass,
+            "update_chore",
+            chore="c1",
+            name="Aftensmad",
+            assignees=["v2", "v1"],
+            points=3,
+            assignment="least_points",
+            description=None,
+            due_time="18:00:00",
+            notify_before=None,
+            approval="auto",
+            repeat="interval",
+            every=2,
+            unit="week",
+            **{"from": "due"},
+        )
+        chore = coordinator.entry.runtime_data.chores["c1"]
+        assert chore.name == "Aftensmad" and chore.points == 3
+        assert chore.assignees == ("v2", "v1")
+        assert chore.condition is not None

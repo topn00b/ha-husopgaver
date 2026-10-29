@@ -55,6 +55,53 @@ const TEXTS = {
     awaiting: "Afventer godkendelse",
     condition_unknown: "Betingelse ukendt",
     unassigned: "Ingen",
+    new_chore: "Ny opgave",
+    edit_chore: "Ret opgave",
+    f_name: "Hvad skal laves?",
+    f_who: "Hvem?",
+    f_rotation: "Hvordan fordeles den?",
+    rotation: {
+      round_robin: "Skiftes",
+      least_points: "Færrest point",
+      fixed: "Altid den første",
+      each: "Alle hver for sig",
+    },
+    f_freq: "Hvor tit?",
+    freq: {
+      once: "Én gang",
+      daily: "Hver dag",
+      weekdays: "Bestemte dage",
+      weekly: "Hver uge",
+      biweekly: "Hver 2. uge",
+      monthly: "Hver måned",
+      yearly: "Hvert år",
+      custom: "Andet",
+    },
+    weekdays: ["Ma", "Ti", "On", "To", "Fr", "Lø", "Sø"],
+    f_date: "Dato",
+    f_time: "Klokkeslæt (valgfrit)",
+    f_points: "Point",
+    f_every: "Hver",
+    units: { day: "dage", week: "uger", month: "måneder" },
+    f_from: "Næste gang regnes fra",
+    from: { due: "Fast rytme", completion: "Sidst udført" },
+    more_options: "Flere valg",
+    fewer_options: "Færre valg",
+    f_description: "Beskrivelse",
+    f_notify: "Påmindelse",
+    notify: { 0: "Ingen", 15: "15 min før", 30: "30 min før", 60: "1 time før" },
+    f_approval: "Skal godkendes",
+    approval: { auto: "Hvis personen skal", always: "Altid", never: "Aldrig" },
+    has_condition: "Opgaven har en betingelse (kalender eller entitet). Den bevares.",
+    save: "Gem",
+    cancel: "Annullér",
+    delete: "Slet",
+    confirm_delete: "Tryk igen for at slette",
+    saving: "Gemmer…",
+    err_name: "Skriv, hvad der skal laves.",
+    err_who: "Vælg mindst én person.",
+    err_days: "Vælg mindst én dag.",
+    err_date: "Vælg en dato.",
   },
   en: {
     title: "Chores",
@@ -91,6 +138,53 @@ const TEXTS = {
     awaiting: "Awaiting approval",
     condition_unknown: "Condition unknown",
     unassigned: "Nobody",
+    new_chore: "New chore",
+    edit_chore: "Edit chore",
+    f_name: "What needs doing?",
+    f_who: "Who?",
+    f_rotation: "How is it shared?",
+    rotation: {
+      round_robin: "Take turns",
+      least_points: "Fewest points",
+      fixed: "Always the first",
+      each: "Everyone separately",
+    },
+    f_freq: "How often?",
+    freq: {
+      once: "Once",
+      daily: "Every day",
+      weekdays: "Certain days",
+      weekly: "Every week",
+      biweekly: "Every 2 weeks",
+      monthly: "Every month",
+      yearly: "Every year",
+      custom: "Other",
+    },
+    weekdays: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
+    f_date: "Date",
+    f_time: "Time (optional)",
+    f_points: "Points",
+    f_every: "Every",
+    units: { day: "days", week: "weeks", month: "months" },
+    f_from: "Next time counts from",
+    from: { due: "Fixed rhythm", completion: "Last done" },
+    more_options: "More options",
+    fewer_options: "Fewer options",
+    f_description: "Description",
+    f_notify: "Reminder",
+    notify: { 0: "None", 15: "15 min before", 30: "30 min before", 60: "1 hour before" },
+    f_approval: "Needs approval",
+    approval: { auto: "If the person does", always: "Always", never: "Never" },
+    has_condition: "This chore has a condition (calendar or entity). It is kept.",
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    confirm_delete: "Tap again to delete",
+    saving: "Saving…",
+    err_name: "Write what needs doing.",
+    err_who: "Choose at least one person.",
+    err_days: "Choose at least one day.",
+    err_date: "Choose a date.",
   },
 };
 
@@ -181,6 +275,135 @@ export function pointsBoard(persons) {
     .sort((a, b) => b.week_points - a.week_points || a.name.localeCompare(b.name));
 }
 
+export const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+export const FREQUENCIES = ["once", "daily", "weekdays", "weekly", "biweekly", "monthly", "yearly", "custom"];
+
+// Faste valg i dialogen, og hvordan de svarer til en interval-gentagelse.
+const INTERVAL_PRESETS = {
+  daily: [1, "day"],
+  weekly: [1, "week"],
+  biweekly: [2, "week"],
+  monthly: [1, "month"],
+};
+
+/** En tom formular til en ny opgave. */
+export function newForm(todayIso, personId) {
+  return {
+    id: null,
+    name: "",
+    description: "",
+    assignees: personId ? [personId] : [],
+    assignment: "round_robin",
+    freq: "weekly",
+    weekdays: [],
+    date: todayIso,
+    extraDates: [],
+    time: "",
+    points: 1,
+    every: 1,
+    unit: "week",
+    from: "due",
+    notify: 0,
+    approval: "auto",
+    hasCondition: false,
+  };
+}
+
+/** En eksisterende opgaves indstillinger som formular. */
+export function choreToForm(chore, todayIso) {
+  const form = {
+    ...newForm(todayIso, null),
+    id: chore.id,
+    name: chore.name,
+    description: chore.description || "",
+    assignees: [...chore.assignees],
+    assignment: chore.assignment === "fixed" && chore.assignees.length === 1 ? "round_robin" : chore.assignment,
+    time: chore.due_time || "",
+    points: chore.points,
+    notify: chore.notify_before || 0,
+    approval: chore.approval,
+    hasCondition: chore.has_condition,
+  };
+  switch (chore.repeat) {
+    case "none":
+      form.freq = "once";
+      form.date = (chore.due || todayIso).slice(0, 10);
+      break;
+    case "weekly":
+      form.freq = "weekdays";
+      form.weekdays = [...chore.weekdays];
+      break;
+    case "yearly":
+      form.freq = "yearly";
+      form.date = `${todayIso.slice(0, 4)}-${chore.dates[0]}`;
+      form.extraDates = chore.dates.slice(1);
+      break;
+    case "interval": {
+      const preset = Object.entries(INTERVAL_PRESETS).find(
+        ([, [every, unit]]) => every === chore.every && unit === chore.unit,
+      );
+      form.freq = preset && chore.from === "due" ? preset[0] : "custom";
+      form.every = chore.every;
+      form.unit = chore.unit;
+      form.from = chore.from;
+      break;
+    }
+  }
+  return form;
+}
+
+/**
+ * Formularen som et service-kald: { service, data } eller { error }.
+ * Kun det, formularen viser, sendes; fx bevares en betingelse ved rettelse.
+ */
+export function formToService(form) {
+  const name = (form.name || "").trim();
+  if (!name) return { error: "err_name" };
+  if (!form.assignees.length) return { error: "err_who" };
+  const data = {
+    name,
+    assignees: [...form.assignees],
+    points: Math.max(0, Number(form.points) || 0),
+    assignment: form.assignees.length === 1 ? "fixed" : form.assignment,
+    description: (form.description || "").trim() || null,
+    due_time: form.time ? `${form.time}:00` : null,
+    notify_before: Number(form.notify) ? { minutes: Number(form.notify) } : null,
+    approval: form.approval,
+  };
+  switch (form.freq) {
+    case "once":
+      if (!form.date) return { error: "err_date" };
+      Object.assign(data, { repeat: "none", due: `${form.date} ${form.time || "00:00"}:00` });
+      break;
+    case "weekdays":
+      if (!form.weekdays.length) return { error: "err_days" };
+      Object.assign(data, {
+        repeat: "weekly",
+        weekdays: WEEKDAY_KEYS.filter((d) => form.weekdays.includes(d)),
+      });
+      break;
+    case "yearly":
+      if (!form.date) return { error: "err_date" };
+      Object.assign(data, { repeat: "yearly", dates: [form.date.slice(5), ...form.extraDates] });
+      break;
+    case "custom":
+      Object.assign(data, {
+        repeat: "interval",
+        every: Math.max(1, Math.round(Number(form.every) || 1)),
+        unit: form.unit,
+        from: form.from,
+      });
+      break;
+    default: {
+      const [every, unit] = INTERVAL_PRESETS[form.freq];
+      Object.assign(data, { repeat: "interval", every, unit, from: "due" });
+    }
+  }
+  return form.id
+    ? { service: "update_chore", data: { chore: form.id, ...data } }
+    : { service: "create_chore", data };
+}
+
 export function escapeHtml(value) {
   return String(value ?? "").replace(
     /[&<>"']/g,
@@ -261,6 +484,34 @@ const STYLE = `
   .board .score { padding: 8px 12px; font-weight: 500; color: var(--primary-text-color); }
   .board .pending { font-weight: 400; color: var(--secondary-text-color); font-size: 0.85em; margin-left: 6px; }
   .message { padding: 16px 0; color: var(--secondary-text-color); }
+  .add {
+    min-height: 40px; padding: 0 16px; border-radius: 20px; border: none; cursor: pointer;
+    background: var(--primary-color); color: var(--text-primary-color, #fff); font: inherit; font-weight: 500;
+  }
+  .main[data-action="edit"] { cursor: pointer; }
+  .form { display: grid; gap: 12px; max-width: 640px; }
+  .form h2 { margin: 0; font-size: 1.15em; font-weight: 500; color: var(--primary-text-color); }
+  .field { display: grid; gap: 6px; }
+  .label { font-size: 0.9em; color: var(--secondary-text-color); }
+  .form input, .form textarea {
+    box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--divider-color); background: var(--secondary-background-color, transparent);
+    color: var(--primary-text-color); font: inherit;
+  }
+  .form input.short { width: 80px; }
+  .inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--primary-text-color); }
+  .form .chip { min-height: 44px; }
+  .stepper { display: flex; align-items: center; gap: 12px; }
+  .stepper .chip { width: 44px; justify-content: center; font-size: 1.2em; padding: 0; }
+  .stepper .value { min-width: 2ch; text-align: center; font-size: 1.1em; color: var(--primary-text-color); }
+  .link { justify-self: start; border: none; background: none; color: var(--primary-color); font: inherit; cursor: pointer; padding: 8px 0; min-height: 44px; }
+  .note { font-size: 0.9em; color: var(--secondary-text-color); }
+  .form-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+  .form-buttons .spacer { flex: 1; }
+  .form-buttons button { min-height: 48px; padding: 0 20px; border-radius: 24px; font: inherit; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
+  .form-buttons .primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; font-weight: 500; }
+  .form-buttons .danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
+  .form-buttons button[disabled] { opacity: 0.6; cursor: default; }
   .error { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--error-color, #db4437); color: #fff; }
 `;
 
@@ -273,7 +524,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       this._openMenu = null;
       this._error = null;
       this._unsub = null;
+      this._edit = null; // formularen, når en opgave oprettes eller rettes
       this.shadowRoot.addEventListener("click", (ev) => this._onClick(ev));
+      this.shadowRoot.addEventListener("input", (ev) => this._onInput(ev));
     }
 
     static getConfigElement() {
@@ -287,7 +540,13 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
     setConfig(config) {
       if (!config || typeof config !== "object") throw new Error("Ugyldig konfiguration");
       const upcomingChanged = this._config && this._config.upcoming_days !== config.upcoming_days;
-      this._config = { show_later: true, show_points: true, show_done: true, ...config };
+      this._config = {
+        show_later: true,
+        show_points: true,
+        show_done: true,
+        allow_edit: true,
+        ...config,
+      };
       const stored = storageGet(this._storageKey());
       this._filter = stored !== null ? stored || null : config.default_person || null;
       if (upcomingChanged) this._resubscribe();
@@ -331,7 +590,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       try {
         this._unsub = await this._hass.connection.subscribeMessage((data) => {
           this._data = data;
-          this._render();
+          // Under redigering tegnes kortet først om, når formularen lukkes,
+          // så det, der skrives, ikke forsvinder.
+          if (!this._edit) this._render();
         }, message);
       } catch (err) {
         this._unsub = null;
@@ -411,7 +672,110 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         case "reassign":
           this._call("reassign", { chore: item.chore_id, person });
           return;
+        case "new":
+          this._edit = newForm(this._today(), this._filter);
+          this._render();
+          return;
+        case "edit": {
+          const chore = this._data?.chores?.find((c) => c.id === el.dataset.chore);
+          if (!chore || !this._config.allow_edit) return;
+          this._edit = choreToForm(chore, this._today());
+          this._openMenu = null;
+          this._render();
+          return;
+        }
+        default:
+          if (this._edit) this._onFormClick(action, el.dataset);
       }
+    }
+
+    _today() {
+      return localDay(new Date(), this._hass?.config?.time_zone);
+    }
+
+    _onInput(ev) {
+      const field = ev.target?.dataset?.field;
+      if (!this._edit || !field) return;
+      this._edit[field] = ev.target.value;
+    }
+
+    _onFormClick(action, data) {
+      const form = this._edit;
+      switch (action) {
+        case "toggle-person": {
+          const list = form.assignees;
+          form.assignees = list.includes(data.person)
+            ? list.filter((p) => p !== data.person)
+            : [...list, data.person];
+          break;
+        }
+        case "toggle-day":
+          form.weekdays = form.weekdays.includes(data.value)
+            ? form.weekdays.filter((d) => d !== data.value)
+            : [...form.weekdays, data.value];
+          break;
+        case "set":
+          form[data.field] = data.value;
+          break;
+        case "points":
+          form.points = Math.max(0, (Number(form.points) || 0) + Number(data.delta));
+          break;
+        case "more":
+          form.more = !form.more;
+          break;
+        case "cancel":
+          this._edit = null;
+          break;
+        case "save":
+          this._save();
+          return;
+        case "delete":
+          if (!form.confirmDelete) {
+            form.confirmDelete = true;
+            break;
+          }
+          this._delete();
+          return;
+        default:
+          return;
+      }
+      if (action !== "delete") form.confirmDelete = false;
+      this._render();
+    }
+
+    async _save() {
+      const form = this._edit;
+      const result = formToService(form);
+      if (result.error) {
+        form.error = this._t[result.error];
+        this._render();
+        return;
+      }
+      form.error = null;
+      form.saving = true;
+      this._render();
+      try {
+        await this._hass.callService("husopgaver", result.service, result.data);
+        this._edit = null;
+      } catch (err) {
+        form.saving = false;
+        form.error = err?.message || String(err);
+      }
+      this._render();
+    }
+
+    async _delete() {
+      const form = this._edit;
+      form.saving = true;
+      this._render();
+      try {
+        await this._hass.callService("husopgaver", "delete_chore", { chore: form.id });
+        this._edit = null;
+      } catch (err) {
+        form.saving = false;
+        form.error = err?.message || String(err);
+      }
+      this._render();
     }
 
     _render() {
@@ -421,14 +785,20 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       let body;
       if (!this._data) body = `<div class="message">${t.loading}</div>`;
       else if (this._data.loaded === false) body = `<div class="message">${t.not_loaded}</div>`;
+      else if (this._edit) body = this._renderForm(t);
       else body = this._renderContent(t);
+      const canAdd = this._config.allow_edit && this._data?.loaded && !this._edit;
+      const addButton = canAdd
+        ? `<button class="add" data-action="new">＋ ${t.new_chore}</button>`
+        : "";
       const error = this._error ? `<div class="error" role="alert">${escapeHtml(this._error)}</div>` : "";
       this.shadowRoot.innerHTML = `
         <style>${STYLE}</style>
         <ha-card>
           <div class="header">
             ${title ? `<div class="title">${escapeHtml(title)}</div>` : ""}
-            ${this._data?.persons ? this._renderChips(t) : ""}
+            ${addButton}
+            ${this._data?.persons && !this._edit ? this._renderChips(t) : ""}
           </div>
           ${body}
           ${error}
@@ -504,7 +874,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       return `
         <li class="${item.group}" style="--person-color:${escapeHtml(color)}">
           <div class="bar"></div>
-          <div class="main">
+          <div class="main"${
+            this._config.allow_edit ? ` data-action="edit" data-chore="${escapeHtml(item.chore_id)}"` : ""
+          }>
             <div class="name">${escapeHtml(item.name)}</div>
             <div class="meta">
               <span class="person"><span class="dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(person?.name ?? t.unassigned)}</span>
@@ -534,6 +906,89 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
           )
           .join("")}
       </div>`;
+    }
+
+    _renderForm(t) {
+      const form = this._edit;
+      const persons = this._data.persons.filter((p) => p.active || form.assignees.includes(p.id));
+      const chip = (action, label, pressed, extra = "") =>
+        `<button type="button" class="chip" data-action="${action}" ${extra} aria-pressed="${pressed}">${label}</button>`;
+      const set = (field, value, label) =>
+        chip("set", escapeHtml(label), String(form[field]) === String(value), `data-field="${field}" data-value="${escapeHtml(value)}"`);
+      const field = (label, content) => `<div class="field"><div class="label">${label}</div>${content}</div>`;
+
+      const who = persons
+        .map((p) =>
+          chip(
+            "toggle-person",
+            `<span class="dot" style="background:${escapeHtml(personColor(this._data.persons, p.id))}"></span>${escapeHtml(p.name)}`,
+            form.assignees.includes(p.id),
+            `data-person="${escapeHtml(p.id)}"`,
+          ),
+        )
+        .join("");
+      const rotation =
+        form.assignees.length > 1
+          ? field(
+              t.f_rotation,
+              `<div class="chips">${Object.entries(t.rotation)
+                .map(([value, label]) => set("assignment", value, label))
+                .join("")}</div>`,
+            )
+          : "";
+      const freq = `<div class="chips">${FREQUENCIES.map((f) => set("freq", f, t.freq[f])).join("")}</div>`;
+      let freqDetails = "";
+      if (form.freq === "weekdays") {
+        freqDetails = `<div class="chips">${WEEKDAY_KEYS.map((d, i) =>
+          chip("toggle-day", t.weekdays[i], form.weekdays.includes(d), `data-value="${d}"`),
+        ).join("")}</div>`;
+      } else if (form.freq === "once" || form.freq === "yearly") {
+        freqDetails = field(t.f_date, `<input type="date" data-field="date" value="${escapeHtml(form.date)}">`);
+      } else if (form.freq === "custom") {
+        freqDetails = `
+          <div class="inline">
+            <span>${t.f_every}</span>
+            <input type="number" min="1" max="365" data-field="every" value="${escapeHtml(form.every)}" class="short">
+            <div class="chips">${Object.entries(t.units).map(([u, label]) => set("unit", u, label)).join("")}</div>
+          </div>
+          ${field(t.f_from, `<div class="chips">${Object.entries(t.from).map(([v, label]) => set("from", v, label)).join("")}</div>`)}`;
+      }
+
+      const more = form.more
+        ? `
+          ${field(t.f_description, `<textarea data-field="description" rows="2">${escapeHtml(form.description)}</textarea>`)}
+          ${field(t.f_notify, `<div class="chips">${Object.entries(t.notify).map(([v, label]) => set("notify", v, label)).join("")}</div>`)}
+          ${field(t.f_approval, `<div class="chips">${Object.entries(t.approval).map(([v, label]) => set("approval", v, label)).join("")}</div>`)}`
+        : "";
+
+      return `
+        <form class="form" onsubmit="return false">
+          <h2>${form.id ? t.edit_chore : t.new_chore}</h2>
+          ${field(t.f_name, `<input type="text" data-field="name" value="${escapeHtml(form.name)}" autocomplete="off" enterkeyhint="done">`)}
+          ${field(t.f_who, `<div class="chips">${who}</div>`)}
+          ${rotation}
+          ${field(t.f_freq, freq)}
+          ${freqDetails}
+          ${field(t.f_time, `<input type="time" data-field="time" value="${escapeHtml(form.time)}">`)}
+          ${field(
+            t.f_points,
+            `<div class="stepper">
+              <button type="button" class="chip" data-action="points" data-delta="-1" aria-label="-">−</button>
+              <span class="value">${escapeHtml(form.points)}</span>
+              <button type="button" class="chip" data-action="points" data-delta="1" aria-label="+">+</button>
+            </div>`,
+          )}
+          <button type="button" class="link" data-action="more">${form.more ? t.fewer_options : t.more_options}</button>
+          ${more}
+          ${form.hasCondition ? `<div class="note">${t.has_condition}</div>` : ""}
+          ${form.error ? `<div class="error" role="alert">${escapeHtml(form.error)}</div>` : ""}
+          <div class="form-buttons">
+            ${form.id ? `<button type="button" class="danger" data-action="delete" ${form.saving ? "disabled" : ""}>${form.confirmDelete ? t.confirm_delete : t.delete}</button>` : ""}
+            <span class="spacer"></span>
+            <button type="button" class="secondary" data-action="cancel">${t.cancel}</button>
+            <button type="button" class="primary" data-action="save" ${form.saving ? "disabled" : ""}>${form.saving ? t.saving : t.save}</button>
+          </div>
+        </form>`;
     }
 
     _renderBoard(t, persons) {
@@ -597,6 +1052,7 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         { name: "show_later", selector: { boolean: {} } },
         { name: "show_done", selector: { boolean: {} } },
         { name: "show_points", selector: { boolean: {} } },
+        { name: "allow_edit", selector: { boolean: {} } },
       ];
     }
 
@@ -609,6 +1065,7 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         show_later: da ? "Vis Senere" : "Show Later",
         show_done: da ? "Vis Udført i dag" : "Show Done today",
         show_points: da ? "Vis pointtavle" : "Show points board",
+        allow_edit: da ? "Opret og ret opgaver fra kortet" : "Create and edit chores from the card",
       };
       return labels[name] || name;
     }
@@ -631,7 +1088,13 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       }
       this._form.hass = this._hass;
       this._form.schema = this._schema();
-      this._form.data = { show_later: true, show_done: true, show_points: true, ...this._config };
+      this._form.data = {
+        show_later: true,
+        show_done: true,
+        show_points: true,
+        allow_edit: true,
+        ...this._config,
+      };
     }
   }
 

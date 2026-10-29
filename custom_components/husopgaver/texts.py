@@ -24,6 +24,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "status_overdue": "Overskredet",
         "status_pending_approval": "Afventer godkendelse",
         "with_person": "{chore} ({person})",
+        "condition_unknown": "Betingelse ukendt",
     },
     "en": {
         "reminder": "{chore} is coming up",
@@ -38,6 +39,7 @@ _TEXTS: dict[str, dict[str, str]] = {
         "status_overdue": "Overdue",
         "status_pending_approval": "Awaiting approval",
         "with_person": "{chore} ({person})",
+        "condition_unknown": "Condition unknown",
     },
 }
 

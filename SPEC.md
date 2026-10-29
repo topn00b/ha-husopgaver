@@ -131,6 +131,11 @@ Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdage
 - **Entitet:** `entity` og `active_state` (standard `on`). Opgaven er kun nødvendig, når entiteten har den state.
 - **Ikke nødvendig:** Opgaven fjernes fra listerne og logges som `not_needed` med 0 point. Rotationen rykker ikke, og næste forfald beregnes.
 - **Ukendt:** Er kalenderen eller entiteten `unavailable`/`unknown`, bliver opgaven stående med `condition_state: unknown`. Den skjules ikke stille.
+  - Todo-punktet viser "Betingelse ukendt". Der prøves ikke igen; opgaven laves som normalt eller springes over.
+- **Tidspunkt for tjek:** `check_time` på forfaldsdagen (lokal tid). Er tidspunktet allerede passeret, fx når opgaven lige er oprettet, tjekkes der med det samme.
+- **Notifikationer** for en opgave med betingelse venter, til betingelsen er tjekket. En opgave, der ikke er nødvendig, giver ingen "forfalden" eller "overskredet".
+- **Overlap** vurderes af integrationen selv ud fra begivenhedernes start og slut, så alle kalendertyper behandles ens. Heldagsbegivenheder gælder fra midnat til midnat lokal tid. Nøgleord sammenlignes med titlen uden forskel på store og små bogstaver.
+- **Formular:** Betingelse vælges under Avanceret (ingen, kalender-nøgleord eller entitet). Derefter følger et trin med kalender, nøgleord og tidspunkt for tjek (standard 14:00), eller entitet og state.
 
 ## 6. Godkendelse
 1. En person med `requires_approval`, eller en opgave med `always`, krydser af. Der oprettes en `pending`-post, og status bliver `pending_approval`. Opgaven bliver stående på listen med markeringen "Afventer godkendelse".

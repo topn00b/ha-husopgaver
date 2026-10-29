@@ -425,6 +425,13 @@
         "always": "Always",
         "never": "Never"
       }
+    },
+    "condition": {
+      "options": {
+        "none": "None",
+        "calendar": "Calendar keywords",
+        "entity": "Entity"
+      }
     }
   },
   "config_subentries": {
@@ -514,12 +521,14 @@
               "data": {
                 "approval": "Approval",
                 "complete_window": "Can be completed from",
-                "builtin_notify": "Built-in notifications"
+                "builtin_notify": "Built-in notifications",
+                "condition": "Condition"
               },
               "data_description": {
                 "approval": "Follow the person: only people whose completions must be approved.",
                 "complete_window": "Optional. How long before it is due the chore can be completed. Without it: when it appears on the list.",
-                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events."
+                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events.",
+                "condition": "Optional. Calendar: not needed when an event with a keyword is on. Entity: only needed when the entity has a given state."
               }
             }
           }
@@ -548,12 +557,14 @@
               "data": {
                 "approval": "Approval",
                 "complete_window": "Can be completed from",
-                "builtin_notify": "Built-in notifications"
+                "builtin_notify": "Built-in notifications",
+                "condition": "Condition"
               },
               "data_description": {
                 "approval": "Follow the person: only people whose completions must be approved.",
                 "complete_window": "Optional. How long before it is due the chore can be completed. Without it: when it appears on the list.",
-                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events."
+                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events.",
+                "condition": "Optional. Calendar: not needed when an event with a keyword is on. Entity: only needed when the entity has a given state."
               }
             }
           }
@@ -588,6 +599,30 @@
           },
           "data_description": {
             "dates": "As MM-DD, for example 10-01. 29 February can't be used."
+          }
+        },
+        "condition_calendar": {
+          "title": "Calendar condition",
+          "data": {
+            "calendar": "Calendar",
+            "keywords": "Keywords",
+            "check_time": "Check at"
+          },
+          "data_description": {
+            "keywords": "Not needed when an event whose title contains one of these is on at the chore's time (without a time: on the day).",
+            "check_time": "When on the due day the calendar is checked."
+          }
+        },
+        "condition_entity": {
+          "title": "Entity condition",
+          "data": {
+            "entity": "Entity",
+            "active_state": "Needed when the state is",
+            "check_time": "Check at"
+          },
+          "data_description": {
+            "active_state": "Otherwise the chore is not needed.",
+            "check_time": "When on the due day the entity is checked."
           }
         }
       },

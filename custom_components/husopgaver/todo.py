@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from . import HusopgaverConfigEntry
-from .const import CONF_ALL_LIST, ChoreStatus, LogAction, ScheduleKind
+from .const import CONF_ALL_LIST, ChoreStatus, ConditionState, LogAction, ScheduleKind
 from .coordinator import HusopgaverCoordinator, OccurrenceView, validation_error
 from .entity import HusopgaverEntity
 from .models import Chore, LogEntry, Person
@@ -92,14 +92,23 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
             return chore.name
         return text(self.hass, "with_person", chore=chore.name, person=person.name)
 
-    def _generated(self, points: int, status: ChoreStatus | None) -> str:
+    def _generated(
+        self, points: int, status: ChoreStatus | None, unknown: bool = False
+    ) -> str:
         parts = [text(self.hass, "points", points=points)]
         if status is not None:
             parts.append(text(self.hass, f"status_{status.value}"))
+        if unknown:
+            parts.append(text(self.hass, "condition_unknown"))
         return " · ".join(parts)
 
-    def _description(self, chore: Chore, status: ChoreStatus | None) -> str:
-        generated = self._generated(chore.points, status)
+    def _view_generated(self, view: OccurrenceView) -> str:
+        unknown = view.occurrence.condition_state is ConditionState.UNKNOWN
+        return self._generated(view.chore.points, view.status, unknown)
+
+    def _description(self, view: OccurrenceView) -> str:
+        chore = view.chore
+        generated = self._view_generated(view)
         if chore.description:
             return f"{generated}{_DESCRIPTION_SEPARATOR}{chore.description}"
         return generated
@@ -125,7 +134,7 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
                     uid=view.uid,
                     status=TodoItemStatus.NEEDS_ACTION,
                     due=_item_due(view.chore, view.due),
-                    description=self._description(view.chore, view.status),
+                    description=self._description(view),
                 )
             )
         done = self._done_today(now)
@@ -213,7 +222,7 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
         description = item.description or None
         if description is not None:
             # Den genererede første linje (point og status) er ikke en del af opgaven.
-            generated = self._generated(view.chore.points, view.status)
+            generated = self._view_generated(view)
             if description.startswith(generated):
                 description = (
                     description.removeprefix(generated)

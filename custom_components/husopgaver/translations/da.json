@@ -425,6 +425,13 @@
         "always": "Altid",
         "never": "Aldrig"
       }
+    },
+    "condition": {
+      "options": {
+        "none": "Ingen",
+        "calendar": "Kalender-nøgleord",
+        "entity": "Entitet"
+      }
     }
   },
   "config_subentries": {
@@ -514,12 +521,14 @@
               "data": {
                 "approval": "Godkendelse",
                 "complete_window": "Kan krydses af fra",
-                "builtin_notify": "Indbyggede notifikationer"
+                "builtin_notify": "Indbyggede notifikationer",
+                "condition": "Betingelse"
               },
               "data_description": {
                 "approval": "Følg personen: kun personer, hvis afkrydsninger skal godkendes.",
                 "complete_window": "Valgfrit. Hvor længe før forfald opgaven kan krydses af. Uden: når den kommer på listen.",
-                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene."
+                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene.",
+                "condition": "Valgfri. Kalender: ikke nødvendig, når en begivenhed med et nøgleord er i gang. Entitet: kun nødvendig, når entiteten har en bestemt state."
               }
             }
           }
@@ -548,12 +557,14 @@
               "data": {
                 "approval": "Godkendelse",
                 "complete_window": "Kan krydses af fra",
-                "builtin_notify": "Indbyggede notifikationer"
+                "builtin_notify": "Indbyggede notifikationer",
+                "condition": "Betingelse"
               },
               "data_description": {
                 "approval": "Følg personen: kun personer, hvis afkrydsninger skal godkendes.",
                 "complete_window": "Valgfrit. Hvor længe før forfald opgaven kan krydses af. Uden: når den kommer på listen.",
-                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene."
+                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene.",
+                "condition": "Valgfri. Kalender: ikke nødvendig, når en begivenhed med et nøgleord er i gang. Entitet: kun nødvendig, når entiteten har en bestemt state."
               }
             }
           }
@@ -588,6 +599,30 @@
           },
           "data_description": {
             "dates": "Som MM-DD, fx 10-01. 29. februar kan ikke bruges."
+          }
+        },
+        "condition_calendar": {
+          "title": "Kalenderbetingelse",
+          "data": {
+            "calendar": "Kalender",
+            "keywords": "Nøgleord",
+            "check_time": "Tjek kl."
+          },
+          "data_description": {
+            "keywords": "Ikke nødvendig, når en begivenhed, hvis titel indeholder et af ordene, er i gang på opgavens tidspunkt (uden tidspunkt: den dag).",
+            "check_time": "Hvornår på forfaldsdagen kalenderen tjekkes."
+          }
+        },
+        "condition_entity": {
+          "title": "Entitetsbetingelse",
+          "data": {
+            "entity": "Entitet",
+            "active_state": "Nødvendig, når state er",
+            "check_time": "Tjek kl."
+          },
+          "data_description": {
+            "active_state": "Ellers er opgaven ikke nødvendig.",
+            "check_time": "Hvornår på forfaldsdagen entiteten tjekkes."
           }
         }
       },

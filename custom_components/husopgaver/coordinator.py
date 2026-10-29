@@ -18,7 +18,12 @@ import uuid
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, State, callback
-from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.exceptions import (
+    ConfigEntryError,
+    HomeAssistantError,
+    ServiceValidationError,
+)
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
@@ -39,6 +44,7 @@ from .const import (
     EVENT_APPROVAL_REQUESTED,
     EVENT_COMPLETED,
     EVENT_DUE,
+    EVENT_NOT_NEEDED,
     EVENT_OVERDUE,
     EVENT_REJECTED,
     EVENT_REMINDER,
@@ -49,12 +55,13 @@ from .const import (
     ApprovalMode,
     Assignment,
     ChoreStatus,
+    ConditionKind,
     ConditionState,
     LogAction,
     Notification,
     ScheduleKind,
 )
-from .models import Chore, ChoreState, LogEntry, Occurrence, Person
+from .models import Chore, ChoreState, Condition, LogEntry, Occurrence, Person
 from .points import credited_entries, pending_entries
 from .schedule import due_window, first_due, local_date, local_datetime, next_due, status
 from .storage import HusopgaverStorage
@@ -115,6 +122,19 @@ class OccurrenceView:
         return f"{self.chore.id}|{self.key}|{self.occurrence.next_due.isoformat()}"
 
 
+def _event_time(value: str) -> datetime:
+    """Start eller slut fra calendar.get_events. En dato er lokal midnat."""
+    parsed = dt_util.parse_datetime(value)
+    if parsed is not None:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_util.get_default_time_zone())
+        return dt_util.as_utc(parsed)
+    day = dt_util.parse_date(value)
+    if day is None:
+        raise ValueError(value)
+    return local_datetime(day)
+
+
 def effective_due(occurrence: Occurrence) -> datetime | None:
     """Forfald med udsættelse. None: engangsopgaven er udført."""
     due = occurrence.next_due
@@ -152,6 +172,7 @@ class HusopgaverCoordinator:
         self._listeners: list[CALLBACK_TYPE] = []
         self._unsub_timer: CALLBACK_TYPE | None = None
         self._unsub_action: CALLBACK_TYPE | None = None
+        self._checking: set[tuple[str, str]] = set()
 
     def _parse[T: (Person, Chore)](self, kind: str, cls: type[T]) -> dict[str, T]:
         parsed: dict[str, T] = {}
@@ -816,6 +837,7 @@ class HusopgaverCoordinator:
         entry: LogEntry,
         completed_at: datetime,
         now: datetime,
+        reassign: bool = True,
     ) -> None:
         """Log handlingen, beregn næste forfald og den næste tildeling."""
         self.storage.add_log_entry(entry)
@@ -823,7 +845,7 @@ class HusopgaverCoordinator:
         occ = state.occurrences[key]
         assert occ.next_due is not None
         rr_index, assignee = state.rr_index, occ.assignee
-        if chore.assignment is not Assignment.EACH:
+        if reassign and chore.assignment is not Assignment.EACH:
             assignee, rr_index = self._assign(chore, rr_index, now)
         new_occ = replace(
             occ,
@@ -850,6 +872,14 @@ class HusopgaverCoordinator:
             if state is None:
                 continue
             for key, occ in state.occurrences.items():
+                if self._awaiting_check(chore, occ):
+                    check_at = self._check_at(chore, occ)
+                    if check_at <= now:
+                        self._start_check(chore, key, occ)
+                    else:
+                        wakeup = min(wakeup, check_at)
+                    # Notifikationer venter, til det vides, om opgaven er nødvendig.
+                    continue
                 times = [
                     (kind, at)
                     for kind, at in self._notification_times(chore, occ)
@@ -877,6 +907,137 @@ class HusopgaverCoordinator:
             self.hass, self._handle_timer, wakeup
         )
         self._notify_listeners()
+
+    # Betingelser
+
+    @staticmethod
+    def _awaiting_check(chore: Chore, occ: Occurrence) -> bool:
+        return (
+            chore.condition is not None
+            and occ.condition_state is None
+            and occ.pending_log_id is None
+            and occ.next_due is not None
+        )
+
+    @staticmethod
+    def _check_at(chore: Chore, occ: Occurrence) -> datetime:
+        """Tjek på check_time på forfaldsdagen (lokal tid)."""
+        assert chore.condition is not None
+        due = effective_due(occ)
+        assert due is not None
+        return local_datetime(local_date(due), chore.condition.check_time)
+
+    @callback
+    def _start_check(self, chore: Chore, key: str, occ: Occurrence) -> None:
+        if (chore.id, key) in self._checking:
+            return
+        self._checking.add((chore.id, key))
+        self.entry.async_create_task(
+            self.hass,
+            self._async_check(chore, key, occ),
+            f"husopgaver tjek {chore.name}",
+            eager_start=True,
+        )
+
+    async def _async_check(self, chore: Chore, key: str, occ: Occurrence) -> None:
+        try:
+            result = await self._async_evaluate(chore, occ)
+        finally:
+            self._checking.discard((chore.id, key))
+        current = self.storage.chore_states.get(chore.id)
+        if current is None or current.occurrences.get(key) != occ:
+            return  # forekomsten er ændret i mellemtiden; tjekkes igen ved næste refresh
+        now = dt_util.utcnow()
+        if result is ConditionState.NOT_NEEDED:
+            self._mark_not_needed(chore, key, occ, now)
+        else:
+            self._set_occurrence(chore, key, replace(occ, condition_state=result))
+        self._refresh(now)
+
+    async def _async_evaluate(self, chore: Chore, occ: Occurrence) -> ConditionState:
+        condition = chore.condition
+        assert condition is not None
+        due = effective_due(occ)
+        assert due is not None
+        if condition.kind is ConditionKind.ENTITY:
+            assert condition.entity is not None
+            state = self.hass.states.get(condition.entity)
+            if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                _LOGGER.info("Betingelsen for %s er ukendt: %s", chore.name, condition.entity)
+                return ConditionState.UNKNOWN
+            if state.state == condition.active_state:
+                return ConditionState.ACTIVE
+            return ConditionState.NOT_NEEDED
+        return await self._async_calendar(chore, condition, due)
+
+    async def _async_calendar(
+        self, chore: Chore, condition: Condition, due: datetime
+    ) -> ConditionState:
+        """Ikke nødvendig, hvis en begivenhed med et nøgleord er i gang på opgavens tidspunkt.
+
+        Uden tidspunkt gælder enhver begivenhed den dag.
+        """
+        assert condition.calendar is not None
+        state = self.hass.states.get(condition.calendar)
+        if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            _LOGGER.info("Kalenderen %s er ikke tilgængelig", condition.calendar)
+            return ConditionState.UNKNOWN
+        if chore.due_time is not None:
+            start, end = due, due + timedelta(seconds=1)
+        else:
+            day = local_date(due)
+            start, end = local_datetime(day), local_datetime(day + timedelta(days=1))
+        try:
+            events = await self._async_fetch_events(condition.calendar, start, end)
+        except HomeAssistantError as err:
+            _LOGGER.warning("Kunne ikke hente %s: %s", condition.calendar, err)
+            return ConditionState.UNKNOWN
+        keywords = [k.casefold() for k in condition.keywords]
+        for event in events:
+            try:
+                event_start = _event_time(event["start"])
+                event_end = _event_time(event["end"])
+            except (KeyError, ValueError):
+                continue
+            # Vurderes her, så alle kalendertyper behandles ens.
+            if not (event_start < end and event_end > start):
+                continue
+            summary = str(event.get("summary", "")).casefold()
+            if any(keyword in summary for keyword in keywords):
+                return ConditionState.NOT_NEEDED
+        return ConditionState.ACTIVE
+
+    async def _async_fetch_events(
+        self, calendar: str, start: datetime, end: datetime
+    ) -> list[dict[str, Any]]:
+        """Begivenheder via calendar.get_events, hentet på tidspunktet for tjekket."""
+        response = await self.hass.services.async_call(
+            "calendar",
+            "get_events",
+            {"start_date_time": start.isoformat(), "end_date_time": end.isoformat()},
+            target={"entity_id": calendar},
+            blocking=True,
+            return_response=True,
+        )
+        return list((response or {}).get(calendar, {}).get("events", []))
+
+    @callback
+    def _mark_not_needed(
+        self, chore: Chore, key: str, occ: Occurrence, now: datetime
+    ) -> None:
+        """Log "ikke nødvendig" med 0 point. Rotationen rykker ikke."""
+        due = effective_due(occ)
+        entry = LogEntry(
+            id=uuid.uuid4().hex,
+            person_id=occ.assignee,
+            timestamp=now,
+            action=LogAction.NOT_NEEDED,
+            chore_id=chore.id,
+            occurrence=key,
+            previous_state=self._snapshot(chore, key),
+        )
+        self._advance(chore, key, entry, completed_at=now, now=now, reassign=False)
+        self._fire(EVENT_NOT_NEEDED, chore, occ.assignee, due, entry.id)
 
     @callback
     def _handle_timer(self, now: datetime) -> None:

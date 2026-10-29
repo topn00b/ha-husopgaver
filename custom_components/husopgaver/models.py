@@ -405,7 +405,7 @@ class LogEntry:
     """En post i udførelsesloggen. Loggen tilføjes kun til og slettes aldrig."""
 
     id: str
-    person_id: str
+    person_id: str | None  # None: ingen ejer, fx "ikke nødvendig" uden tildelt
     timestamp: datetime
     action: LogAction
     points: int = 0
@@ -422,7 +422,7 @@ class LogEntry:
         assert timestamp is not None
         return cls(
             id=data["id"],
-            person_id=data["person_id"],
+            person_id=data.get("person_id"),
             timestamp=timestamp,
             action=LogAction(data["action"]),
             points=int(data.get("points", 0)),

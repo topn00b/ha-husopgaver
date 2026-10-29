@@ -55,6 +55,7 @@ from .const import (
     SUBENTRY_PERSON,
     ApprovalMode,
     Assignment,
+    ConditionKind,
     IntervalFrom,
     IntervalUnit,
     ScheduleKind,
@@ -63,6 +64,9 @@ from .models import Chore, Person
 
 ADVANCED = "advanced"
 REPEAT = "repeat"
+CONDITION = "condition"
+NO_CONDITION = "none"
+DEFAULT_CHECK_TIME = "14:00:00"
 
 
 class HusopgaverConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -330,6 +334,7 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
         self._data: dict[str, Any] = {}
         self._kind = ScheduleKind.WEEKLY
         self._subentry: ConfigSubentry | None = None
+        self._condition: ConditionKind | None = None
 
     def _persons(self) -> list[SelectOptionDict]:
         return [
@@ -384,6 +389,10 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
                             vol.Required(
                                 "builtin_notify", default=False
                             ): BooleanSelector(),
+                            vol.Required(CONDITION, default=NO_CONDITION): _select(
+                                "condition",
+                                [NO_CONDITION, *(k.value for k in ConditionKind)],
+                            ),
                         }
                     ),
                     {"collapsed": True},
@@ -414,6 +423,8 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
                 "builtin_notify": advanced.get("builtin_notify", False),
             }
             self._kind = ScheduleKind(user_input[REPEAT])
+            condition = advanced.get(CONDITION, NO_CONDITION)
+            self._condition = None if condition == NO_CONDITION else ConditionKind(condition)
             return self._schedule(None)
 
         suggested: dict[str, Any] = {}
@@ -429,6 +440,7 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
             advanced_suggested: dict[str, Any] = {
                 "approval": existing.get("approval", ApprovalMode.AUTO.value),
                 "builtin_notify": existing.get("builtin_notify", False),
+                CONDITION: (existing.get(CONDITION) or {}).get("kind", NO_CONDITION),
             }
             if (window := _duration(existing.get("complete_window"))) is not None:
                 advanced_suggested["complete_window"] = window
@@ -469,16 +481,17 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
                 data = self._data | {
                     "schedule": _schedule_from_input(self._kind, user_input)
                 }
+                if self._condition is None:
+                    data[CONDITION] = None
                 Chore.from_dict("ny", data)
             except (KeyError, ValueError) as err:
                 errors["base"] = "invalid"
                 placeholders["error"] = str(err)
             else:
-                if self._subentry is None:
-                    return self.async_create_entry(title=data["name"], data=data)
-                return self.async_update_and_abort(
-                    self._get_entry(), self._subentry, title=data["name"], data=data
-                )
+                self._data = data
+                if self._condition is not None:
+                    return self._condition_step(None)
+                return self._finish()
 
         suggested: dict[str, Any] = {}
         previous = self._data.get("schedule", {})
@@ -491,6 +504,82 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
             data_schema=self.add_suggested_values_to_schema(
                 _schedule_schema(self._kind), suggested
             ),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+    @callback
+    def _finish(self) -> SubentryFlowResult:
+        data = self._data
+        if self._subentry is None:
+            return self.async_create_entry(title=data["name"], data=data)
+        return self.async_update_and_abort(
+            self._get_entry(), self._subentry, title=data["name"], data=data
+        )
+
+    async def async_step_condition_calendar(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return self._condition_step(user_input)
+
+    async def async_step_condition_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return self._condition_step(user_input)
+
+    @callback
+    def _condition_step(self, user_input: dict[str, Any] | None) -> SubentryFlowResult:
+        kind = self._condition
+        assert kind is not None
+        errors: dict[str, str] = {}
+        placeholders = {"error": ""}
+        if user_input is not None:
+            condition = {"kind": kind.value, **user_input}
+            if kind is ConditionKind.CALENDAR:
+                condition["keywords"] = [
+                    k.strip() for k in user_input.get("keywords", []) if k.strip()
+                ]
+            try:
+                data = self._data | {CONDITION: condition}
+                Chore.from_dict("ny", data)
+            except (KeyError, ValueError) as err:
+                errors["base"] = "invalid"
+                placeholders["error"] = str(err)
+            else:
+                self._data = data
+                return self._finish()
+
+        if kind is ConditionKind.CALENDAR:
+            schema = vol.Schema(
+                {
+                    vol.Required("calendar"): EntitySelector(
+                        EntitySelectorConfig(domain="calendar")
+                    ),
+                    vol.Required("keywords"): TextSelector(
+                        TextSelectorConfig(multiple=True)
+                    ),
+                    vol.Required("check_time", default=DEFAULT_CHECK_TIME): TimeSelector(),
+                }
+            )
+        else:
+            schema = vol.Schema(
+                {
+                    vol.Required("entity"): EntitySelector(),
+                    vol.Required("active_state", default="on"): TextSelector(),
+                    vol.Required("check_time", default=DEFAULT_CHECK_TIME): TimeSelector(),
+                }
+            )
+        previous = self._data.get(CONDITION) or {}
+        suggested = (
+            {k: v for k, v in previous.items() if k != "kind"}
+            if previous.get("kind") == kind.value
+            else {}
+        )
+        if user_input is not None:
+            suggested = user_input
+        return self.async_show_form(
+            step_id=f"condition_{kind.value}",
+            data_schema=self.add_suggested_values_to_schema(schema, suggested),
             errors=errors,
             description_placeholders=placeholders,
         )

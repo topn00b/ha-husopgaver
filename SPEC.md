@@ -31,6 +31,7 @@ Dokumentet bruger kun pladsholdere: Voksen 1, Voksen 2, Barn 1 og Barn 2.
 | `name` | str | Visningsnavn |
 | `person_entity` | `person.*` | Valgfri |
 | `notify_target` | `notify.*` | Valgfri, børn behøver ingen |
+| `color` | str | Valgfri farve til dashboardkortet |
 | `can_approve` | bool | Kan godkende andres afkrydsninger (voksne) |
 | `requires_approval` | bool | Afkrydsninger skal godkendes (børn) |
 | `active` | bool | Inaktiv: tildeles intet, men historikken bevares |
@@ -235,6 +236,25 @@ Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `no
 - **`examples/automation_godkendelse.yaml`:** En actionable notification til de voksne.
 - **Eksempel på en betingelse for aftensmad** baseret på kalenderen.
 
+### Dashboardkort (`husopgaver-card`)
+Et eget Lovelace-kort, der følger med integrationen. Opdelingen er inspireret af Donetick, men kode og design er vores eget.
+
+- **Levering:** Kortet ligger i integrationen (`custom_components/husopgaver/frontend/`) og registreres automatisk som frontend-modul, når integrationen indlæses. Der kræves ingen ekstra installation i HACS og ingen ressource-opsætning.
+- **Teknik:** Et rent web component uden byggetrin, CDN eller eksterne biblioteker. Det kører 100 % lokalt.
+- **Data:** Websocket-kommandoen `husopgaver/occurrences` giver forekomsterne med status, person, point og forfald. Med en abonnements-variant opdateres kortet straks ved ændringer, uden polling.
+- **Grupper:** Afventer godkendelse, Overskredet, I dag, Kommende (inden for vinduet) og Senere. Senere er sammenklappet som standard. Tomme grupper skjules.
+- **Opgavekort:** navn, en farvet chip for personen, forfald ("i dag 18:00", "i morgen", "om 3 dage"), point og eventuelt markeringen "Afventer godkendelse" eller "Ikke nødvendig".
+  - **Afkrydsning:** ét tryk på den store knap. Med et personfilter krediteres den valgte person, ellers den tildelte (samme regel som todo-listerne).
+  - **Langt tryk eller menu:** spring over, udsæt, giv til en anden og fortryd.
+  - Bruger de samme services som resten af integrationen, så godkendelse, spærringer og fejlbeskeder er de samme.
+- **Personfilter:** chips med "Alle" og hver person øverst. Valget huskes per enhed, så hvert familiemedlems telefon kan stå på sig selv.
+- **Pointtavle** (valgfri): ugens point per person, sorteret.
+- **Farver:** Hver person har en valgfri farve i person-formularen. Ellers bruges en fast palet efter rækkefølge. Kortet bruger HA's tema-variabler og virker i lyst og mørkt tema.
+- **Tablet:** Trykflader er mindst 48 px, og layoutet går fra én kolonne på telefon til grupper side om side på tablet.
+- **Kortets indstillinger** (visuel editor): integrationen, standardfilter, om Senere og pointtavlen vises, og vinduet for Kommende.
+- **Sprog:** dansk og engelsk efter brugerens sprog i HA.
+- **Tests:** Websocket-kommandoen og abonnementet testes med pytest. Kortets egen logik til gruppering og tekster for forfald ligger i rene funktioner med tests.
+
 ## 14. Byggetrin
 1. Datamodel og storage.
 2. Schedule og tildeling med tests, inklusive sommertid.
@@ -244,6 +264,7 @@ Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `no
 6. Config flow, options og subentries.
 7. Betingelser.
 8. README, dashboard og automationseksempler.
+9. Dashboardkortet `husopgaver-card` med websocket-API, og et eksempeldashboard, der bruger det.
 
 ## 15. Uden for v1 (designet til at kunne udvides)
 - **Belønninger:** et katalog, hvor point kan byttes til noget, som udvidelse af `settle`.

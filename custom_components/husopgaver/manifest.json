@@ -1,0 +1,12 @@
+{
+  "domain": "husopgaver",
+  "name": "Husopgaver",
+  "codeowners": ["@topn00b"],
+  "config_flow": true,
+  "documentation": "https://github.com/topn00b/ha-husopgaver",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

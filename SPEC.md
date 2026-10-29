@@ -5,7 +5,7 @@ Husopgaver er en lokal custom integration til Home Assistant, som en familie bru
 - **Domæne:** `husopgaver`
 - **Sprog:** Dansk (primært) og engelsk
 - **Installation:** HACS som custom repository
-- **Mindste HA-version:** 2025.3 (kræver config subentries)
+- **Mindste HA-version:** 2026.10 (den version, der testes mod)
 
 Dokumentet bruger kun pladsholdere: Voksen 1, Voksen 2, Barn 1 og Barn 2.
 

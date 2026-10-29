@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Household chores",
+        "description": "Set up Husopgaver. People and chores are added afterwards from the integration page."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Husopgaver is already set up."
+    }
+  }
+}

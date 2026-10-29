@@ -1,0 +1,2 @@
+# Samme HA-version som pytest-homeassistant-custom-component 0.13.375 pinner (2026.10.4).
+pytest-homeassistant-custom-component==0.13.375

@@ -114,7 +114,7 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
         return generated
 
     def _includes(self, view: OccurrenceView) -> bool:
-        return self._owner is None or view.person_id == self._owner.id
+        return self._owner is None or view.belongs_to(self._owner.id)
 
     def _includes_entry(self, entry: LogEntry) -> bool:
         return self._owner is None or entry.person_id == self._owner.id
@@ -185,12 +185,19 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
             (v for v in self.coordinator.occurrences(now) if v.uid == uid), None
         )
 
-    def _credit_person(self, view: OccurrenceView) -> str | None:
+    def _credit_person(
+        self, view: OccurrenceView, user_id: str | None
+    ) -> str | None:
         """Hvem afkrydsningen krediteres."""
         if self._owner is not None:
             return self._owner.id
         if view.key in self.coordinator.persons:
             return view.key  # "each": forekomstens person
+        if view.is_open:
+            # Ingen navn på: den, der er logget ind. Den fælles tabletbruger
+            # er ingen person, og så kræves det, at man vælger sin egen liste.
+            person = self.coordinator.person_for_user(user_id)
+            return None if person is None else person.id
         return None  # den tildelte
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
@@ -207,7 +214,7 @@ class _ChoreTodoList(HusopgaverEntity, TodoListEntity):
                 return  # allerede krydset af, fx dobbelt tryk
             self.coordinator.complete(
                 view.chore.id,
-                person_id=self._credit_person(view),
+                person_id=self._credit_person(view, user_id),
                 user_id=user_id,
                 expected_due=view.occurrence.next_due,
             )

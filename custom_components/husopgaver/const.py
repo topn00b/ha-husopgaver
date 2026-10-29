@@ -62,6 +62,7 @@ class Assignment(StrEnum):
     ROUND_ROBIN = "round_robin"
     LEAST_POINTS = "least_points"
     EACH = "each"
+    OPEN = "open"  # ingen navn på; den, der har tid, tager den
 
 
 class ScheduleKind(StrEnum):

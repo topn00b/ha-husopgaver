@@ -66,7 +66,10 @@ const TEXTS = {
       least_points: "Færrest point",
       fixed: "Altid den første",
       each: "Alle hver for sig",
+      open: "Den, der har tid",
     },
+    anyone: "Den, der har tid",
+    who_did_it: "Hvem gjorde det?",
     f_freq: "Hvor tit?",
     freq: {
       once: "Én gang",
@@ -149,7 +152,10 @@ const TEXTS = {
       least_points: "Fewest points",
       fixed: "Always the first",
       each: "Everyone separately",
+      open: "Whoever has time",
     },
+    anyone: "Whoever has time",
+    who_did_it: "Who did it?",
     f_freq: "How often?",
     freq: {
       once: "Once",
@@ -245,18 +251,25 @@ export function dueText(dueIso, hasTime, now, t, locale, timeZone) {
 
 /**
  * Hvem en afkrydsning fra kortet krediteres: den valgte person i filteret,
- * ellers forekomstens person ved "alle", ellers den tildelte (null).
+ * ellers forekomstens person ved "alle hver for sig", ellers den tildelte (null).
+ * Ved "den, der har tid" er der ingen tildelt: så den, der er logget ind, og
+ * er det fx den fælles tablet, må der spørges (undefined).
  */
-export function creditPerson(item, filterId) {
+export function creditPerson(item, filterId, viewerId = null) {
   if (filterId) return filterId;
   if (item.each) return item.key;
+  if (item.open) return viewerId || undefined;
   return null;
 }
 
-/** Opgaverne for den valgte person, eller alle. */
+/** Opgaverne for den valgte person, eller alle. Åbne opgaver står hos alle de valgte. */
 export function filterItems(items, filterId) {
   if (!filterId) return items;
-  return items.filter((item) => item.person_id === filterId);
+  return items.filter((item) =>
+    item.open && item.group !== "done"
+      ? (item.assignees || []).includes(filterId)
+      : item.person_id === filterId,
+  );
 }
 
 /** Grupper i fast rækkefølge; tomme grupper udelades. */
@@ -647,7 +660,14 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
           this._render();
           return;
         case "complete": {
-          const credit = creditPerson(item, this._filter);
+          const credit = person || creditPerson(item, this._filter, this._data?.viewer?.person_id);
+          if (credit === undefined) {
+            // Ingen navn på og ingen at kreditere: spørg, hvem der gjorde det.
+            this._pick = this._pick === uid ? null : uid;
+            this._render();
+            return;
+          }
+          this._pick = null;
           this._call("complete", { chore: item.chore_id, ...(credit ? { person: credit } : {}) });
           return;
         }
@@ -871,7 +891,16 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
           <button class="action" data-action="menu" data-uid="${uid}" aria-label="${t.more}" aria-expanded="${this._openMenu === item.uid}">⋮</button>
           <button class="action check" data-action="complete" data-uid="${uid}" aria-label="${t.complete}">✓</button>`;
       }
-      const menu = this._openMenu === item.uid ? this._renderMenu(item, t, persons) : "";
+      let menu = this._openMenu === item.uid ? this._renderMenu(item, t, persons) : "";
+      if (this._pick === item.uid) {
+        const pool = persons.filter((p) => p.active && (item.assignees || []).includes(p.id));
+        menu += `<div class="menu"><span class="label">${t.who_did_it}</span>${pool
+          .map(
+            (p) =>
+              `<button data-action="complete" data-uid="${uid}" data-person="${escapeHtml(p.id)}"><span class="dot" style="background:${escapeHtml(personColor(persons, p.id))}"></span> ${escapeHtml(p.name)}</button>`,
+          )
+          .join("")}</div>`;
+      }
       return `
         <li class="${item.group}" style="--person-color:${escapeHtml(color)}">
           <div class="bar"></div>
@@ -880,7 +909,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
           }>
             <div class="name">${escapeHtml(item.name)}</div>
             <div class="meta">
-              <span class="person"><span class="dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(person?.name ?? t.unassigned)}</span>
+              <span class="person"><span class="dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(
+                person?.name ?? (item.open ? t.anyone : t.unassigned),
+              )}</span>
               <span class="due">${escapeHtml(when)}</span>
               <span>${t.points(item.points)}</span>
               ${flags}
@@ -893,7 +924,7 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
 
     _renderMenu(item, t, persons) {
       const uid = escapeHtml(item.uid);
-      const others = item.each
+      const others = item.each || item.open
         ? []
         : persons.filter((p) => p.active && p.id !== item.person_id);
       return `<div class="menu">

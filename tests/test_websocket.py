@@ -70,6 +70,8 @@ async def test_items_persons_and_done(hass, setup) -> None:
             "description": "Også bestik",
             "key": "v1",
             "each": True,
+            "open": False,
+            "assignees": ["v1", "b1"],
             "person_id": "v1",
             "points": 2,
             "due": entry.timestamp.isoformat(),

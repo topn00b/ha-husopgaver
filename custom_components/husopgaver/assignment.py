@@ -61,6 +61,8 @@ def assign(
     active = each_assignees(chore, persons)
     if not active:
         return None, rr_index
+    if chore.assignment is Assignment.OPEN:
+        return None, rr_index
     if chore.assignment is Assignment.FIXED:
         # Fast er fast: fravær ændrer ikke tildelingen.
         return active[0], rr_index

@@ -82,6 +82,9 @@
     },
     "ambiguous_person": {
       "message": "Several people are called {person}. Use the person's id."
+    },
+    "who_did_it": {
+      "message": "Write who did {chore}: choose a person, or use your own list."
     }
   },
   "entity": {
@@ -384,7 +387,8 @@
         "fixed": "Fixed",
         "round_robin": "Take turns",
         "least_points": "Fewest points",
-        "each": "Everyone"
+        "each": "Everyone",
+        "open": "Whoever has time"
       }
     },
     "repeat": {
@@ -511,7 +515,7 @@
           },
           "data_description": {
             "assignees": "Only these people can get the chore. The order is used when taking turns.",
-            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own.",
+            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own. Whoever has time: no name on it; whoever completes it gets the points.",
             "due_time": "Optional. Without a time the chore is due all day.",
             "notify_before": "Optional reminder before it is due."
           },
@@ -547,7 +551,7 @@
           },
           "data_description": {
             "assignees": "Only these people can get the chore. The order is used when taking turns.",
-            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own.",
+            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own. Whoever has time: no name on it; whoever completes it gets the points.",
             "due_time": "Optional. Without a time the chore is due all day.",
             "notify_before": "Optional reminder before it is due."
           },

@@ -82,6 +82,9 @@
     },
     "ambiguous_person": {
       "message": "Flere personer hedder {person}. Brug personens id."
+    },
+    "who_did_it": {
+      "message": "Vælg, hvem der lavede {chore}, eller brug din egen liste."
     }
   },
   "entity": {
@@ -384,7 +387,8 @@
         "fixed": "Fast",
         "round_robin": "På skift",
         "least_points": "Færrest point",
-        "each": "Alle"
+        "each": "Alle",
+        "open": "Den, der har tid"
       }
     },
     "repeat": {
@@ -511,7 +515,7 @@
           },
           "data_description": {
             "assignees": "Kun disse personer kan få opgaven. Rækkefølgen bruges ved \"På skift\".",
-            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen.",
+            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen. Den, der har tid: intet navn på; den, der krydser af, får pointene.",
             "due_time": "Valgfrit. Uden tidspunkt er opgaven forfalden hele dagen.",
             "notify_before": "Valgfri påmindelse før forfald."
           },
@@ -547,7 +551,7 @@
           },
           "data_description": {
             "assignees": "Kun disse personer kan få opgaven. Rækkefølgen bruges ved \"På skift\".",
-            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen.",
+            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen. Den, der har tid: intet navn på; den, der krydser af, får pointene.",
             "due_time": "Valgfrit. Uden tidspunkt er opgaven forfalden hele dagen.",
             "notify_before": "Valgfri påmindelse før forfald."
           },

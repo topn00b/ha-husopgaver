@@ -54,6 +54,7 @@ Kræver Home Assistant 2026.10 eller nyere.
 | På skift | Personerne i rækkefølge. Fraværende springes over. |
 | Færrest point | Den med færrest point i pointvinduet. Står det lige, den der længst har ikke lavet netop denne opgave. |
 | Alle | Hver person har sin egen forekomst, fx børnenes morgenrutine. |
+| Den, der har tid | Intet navn på. Står hos alle de valgte, og den, der krydser af, får pointene, fx opvaskemaskinen. Krydses den af på den fælles tablet uden filter, spørger kortet, hvem der gjorde det. |
 
 Krydser en anden af end den tildelte, går pointene til den, der krydsede af.
 

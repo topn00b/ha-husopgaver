@@ -99,6 +99,7 @@ create_chore:
           - round_robin
           - least_points
           - each
+          - open
     repeat:
       required: true
       selector:
@@ -202,6 +203,7 @@ update_chore:
           - round_robin
           - least_points
           - each
+          - open
     repeat:
       selector:
         select:

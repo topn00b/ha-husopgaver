@@ -46,7 +46,7 @@ Hver person får en HA-bruger knyttet via `person_entity` → `user_id`. Det bru
 | `description` | str | Valgfri |
 | `points` | int ≥ 0 | 1 |
 | `assignees` | list[person_id] | Flueben ved oprettelse. Kun disse kan få opgaven. |
-| `assignment` | `fixed` / `round_robin` / `least_points` / `each` | `least_points` |
+| `assignment` | `fixed` / `round_robin` / `least_points` / `each` / `open` | `least_points` |
 | `schedule` | se nedenfor | |
 | `due_time` | time | Valgfri |
 | `notify_before` | duration | Valgfri |
@@ -60,6 +60,7 @@ Strategierne:
 - `round_robin`: på skift i rækkefølgen i `assignees`.
 - `least_points`: den med færrest point i det rullende vindue. Se §4.
 - `each`: hver person i `assignees` har sin egen forekomst. Bruges til børnerutiner.
+- `open`: ingen navn på. Opgaven står hos alle i `assignees`, og den, der krydser af, får pointene. Bruges til fx opvaskemaskinen, som bare skal tømmes af den, der har tid.
 
 ### Schedule
 | Type | Parametre |
@@ -121,6 +122,11 @@ Tildelingen beregnes, når en opgave oprettes, og efter hver `completed`, `skipp
 - **`least_points`:** Opgaven går til den med færrest godkendte point i det rullende vindue (standard 30 dage, kan konfigureres). Står det lige, går den til den, der har udført *netop denne opgave* længst tid siden, eller aldrig. Står det stadig lige, afgør rækkefølgen i `assignees`.
 - **`round_robin`:** Turen går til næste kandidat efter `rr_index`. Fraværende springes over, og `rr_index` rykker videre.
 - **`fixed`:** første kandidat. Er den person fraværende, beholdes tildelingen (fast er fast).
+- **`open` ("den, der har tid"):** Ingen tildeles. Hvem der krediteres:
+  - Personens egen todo-liste: listens ejer.
+  - Kortet: den person, filteret står på; ellers den person, der er logget ind; ellers (fx den fælles tablet) spørger kortet "Hvem gjorde det?".
+  - "Alle opgaver" og `husopgaver.complete` uden `person`: den person, der er logget ind; ellers en fejl, der beder om en person.
+  - Spring over gælder for alle. Opgaven kan ikke gives til en bestemt person. Indbyggede notifikationer går til alle de valgte.
 - **Afkrydsning af en anden:** Krydser en person af, som ikke var tildelt, går pointene til den, der krydsede af. Den, der løfter mere, belønnes mere.
 
 ## 5. Betingelser (dynamiske opgaver)

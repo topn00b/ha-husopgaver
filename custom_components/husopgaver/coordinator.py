@@ -118,6 +118,17 @@ class OccurrenceView:
         return self.occurrence.assignee
 
     @property
+    def is_open(self) -> bool:
+        """Ingen navn på: alle de valgte kan tage den."""
+        return self.chore.assignment is Assignment.OPEN
+
+    def belongs_to(self, person_id: str) -> bool:
+        """Om forekomsten står hos personen (tildelt, eller åben for personen)."""
+        if self.is_open:
+            return person_id in self.chore.assignees
+        return self.occurrence.assignee == person_id
+
+    @property
     def uid(self) -> str:
         """Id for netop denne forekomst. Skifter, når forekomsten rykker videre."""
         assert self.occurrence.next_due is not None
@@ -230,6 +241,10 @@ class HusopgaverCoordinator:
 
         return remove
 
+    def candidates(self, chore: Chore) -> list[str]:
+        """De aktive personer, der kan tage opgaven."""
+        return each_assignees(chore, self.persons)
+
     def _occurrence_keys(self, chore: Chore) -> list[str]:
         if chore.assignment is Assignment.EACH:
             return each_assignees(chore, self.persons)
@@ -275,7 +290,9 @@ class HusopgaverCoordinator:
                 and active
                 and occ.assignee != active[0]
             )
-            if occ.assignee not in active or fixed_moved:
+            if chore.assignment is Assignment.OPEN:
+                occurrences[key] = replace(occ, assignee=None)
+            elif occ.assignee not in active or fixed_moved:
                 assignee, rr_index = self._assign(chore, rr_index, now)
                 occurrences[key] = replace(occ, assignee=assignee)
 
@@ -516,6 +533,8 @@ class HusopgaverCoordinator:
         if expected_due is not None and expected_due != occ.next_due:
             return None
         doer = person_id or occ.assignee
+        if doer is None and chore.assignment is Assignment.OPEN:
+            raise validation_error("who_did_it", chore=chore.name)
         if doer is None or doer not in self.persons:
             raise validation_error("unknown_person", person=doer)
         self._check_window(chore, due, now)
@@ -576,8 +595,9 @@ class HusopgaverCoordinator:
             raise validation_error("already_done", chore=chore.name)
         if occ.pending_log_id is not None:
             raise validation_error("pending_approval", chore=chore.name)
+        # Ved "den, der har tid" er der ingen tildelt; springes over for alle.
         doer = occ.assignee
-        if doer is None:
+        if doer is None and chore.assignment is not Assignment.OPEN:
             raise validation_error("unknown_person", person=None)
         entry = LogEntry(
             id=uuid.uuid4().hex,
@@ -597,7 +617,7 @@ class HusopgaverCoordinator:
     @callback
     def reassign(self, chore_id: str, person_id: str) -> None:
         chore = self._chore(chore_id)
-        if chore.assignment is Assignment.EACH:
+        if chore.assignment in (Assignment.EACH, Assignment.OPEN):
             raise validation_error("each_reassign", chore=chore.name)
         if person_id not in each_assignees(chore, self.persons):
             raise validation_error("not_assignee", chore=chore.name, person=self._name(person_id))
@@ -1098,16 +1118,27 @@ class HusopgaverCoordinator:
         self, kind: Notification, chore: Chore, occ: Occurrence
     ) -> None:
         self._fire(_NOTIFICATION_EVENTS[kind], chore, occ.assignee, effective_due(occ))
-        person = self.persons.get(occ.assignee) if occ.assignee else None
-        if chore.builtin_notify and person is not None and person.notify_target:
-            self._send(
-                person.notify_target,
-                {
-                    "title": chore.name,
-                    "message": text(self.hass, kind, chore=chore.name),
-                    "data": {"tag": f"husopgaver_{chore.id}"},
-                },
-            )
+        if not chore.builtin_notify:
+            return
+        # Ved "den, der har tid" får alle de valgte besked.
+        recipients = (
+            [occ.assignee]
+            if occ.assignee is not None
+            else self.candidates(chore)
+            if chore.assignment is Assignment.OPEN
+            else []
+        )
+        for person_id in recipients:
+            person = self.persons.get(person_id)
+            if person is not None and person.notify_target:
+                self._send(
+                    person.notify_target,
+                    {
+                        "title": chore.name,
+                        "message": text(self.hass, kind, chore=chore.name),
+                        "data": {"tag": f"husopgaver_{chore.id}"},
+                    },
+                )
 
     @callback
     def _send(self, notify_target: str, data: dict[str, Any]) -> None:

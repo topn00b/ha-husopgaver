@@ -69,7 +69,7 @@ class PointsSensor(HusopgaverEntity, SensorEntity):
             "overdue_count": sum(
                 1
                 for view in self.coordinator.occurrences(now)
-                if view.person_id == pid and view.status is ChoreStatus.OVERDUE
+                if view.belongs_to(pid) and view.status is ChoreStatus.OVERDUE
             ),
         }
         self._attr_extra_state_attributes = attributes

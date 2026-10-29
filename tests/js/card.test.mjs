@@ -57,6 +57,20 @@ test("hvem krediteres", () => {
   assert.equal(creditPerson({ each: false, key: "_shared" }, "v2"), "v2");
 });
 
+test("den, der har tid: filter, den indloggede eller spørg", () => {
+  const open = { each: false, open: true, key: "_shared" };
+  assert.equal(creditPerson(open, "v2", "v1"), "v2");
+  assert.equal(creditPerson(open, null, "v1"), "v1");
+  assert.equal(creditPerson(open, null, null), undefined);
+  const items = [
+    { uid: "o", group: "today", open: true, person_id: null, assignees: ["v1", "b1"] },
+    { uid: "d", group: "done", open: true, person_id: "b1", assignees: ["v1", "b1"] },
+  ];
+  assert.deepEqual(filterItems(items, "v1").map((i) => i.uid), ["o"]);
+  assert.deepEqual(filterItems(items, "b1").map((i) => i.uid), ["o", "d"]);
+  assert.deepEqual(filterItems(items, "v2").map((i) => i.uid), []);
+});
+
 test("filter og grupper", () => {
   const items = [
     { uid: "1", group: "later", person_id: "v1" },

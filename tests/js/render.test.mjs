@@ -224,3 +224,24 @@ test("siden i sidemenuen viser kortet uden titel og med menuknap på smal skærm
   panel.narrow = false;
   assert.doesNotMatch(panel.shadowRoot.querySelector(".toolbar").innerHTML, /menu-toggle/);
 });
+
+test("den, der har tid: spørger hvem på den fælles tablet", async () => {
+  const { card, calls, push } = makeCard();
+  await new Promise((r) => setTimeout(r));
+  const item = { uid: "o|_shared|x", group: "today", chore_id: "o", name: "Tøm opvaskemaskine", key: "_shared", each: false, open: true, assignees: ["v1", "b1"], person_id: null, points: 1, due: NOW_ISO, has_time: false, status: "due", condition_unknown: false, log_id: null };
+  push({ ...PAYLOAD, viewer: { person_id: null, can_approve: false }, items: [item] });
+  assert.match(card.shadowRoot.innerHTML, /Den, der har tid/);
+  const target = (dataset) => ({ closest: () => ({ dataset }) });
+  card.shadowRoot.click(target({ action: "complete", uid: item.uid }));
+  assert.match(card.shadowRoot.innerHTML, /Hvem gjorde det\?/);
+  assert.equal(calls.filter(([s]) => s === "complete").length, 0);
+  card.shadowRoot.click(target({ action: "complete", uid: item.uid, person: "b1" }));
+  await new Promise((r) => setTimeout(r));
+  assert.deepEqual(calls.at(-1), ["complete", { chore: "o", person: "b1" }]);
+
+  // På en telefon, der er logget ind som en person, krediteres den person direkte.
+  push({ ...PAYLOAD, viewer: { person_id: "v1", can_approve: true }, items: [item] });
+  card.shadowRoot.click(target({ action: "complete", uid: item.uid }));
+  await new Promise((r) => setTimeout(r));
+  assert.deepEqual(calls.at(-1), ["complete", { chore: "o", person: "v1" }]);
+});

@@ -184,7 +184,12 @@ Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdage
 | `husopgaver.settle` | `person`: nulstiller `since_settlement`, logger `settled`, sletter intet |
 | `husopgaver.create_chore` / `update_chore` / `delete_chore` | Opgavens felter |
 
-`chore` kan angives som opgavens id, todo-punkt eller navn.
+`chore` kan angives som opgavens id, todo-punkt eller navn. `person` kan angives som id, navn eller person-entitet. Navne sammenlignes uden forskel på store og små bogstaver. Er et navn ikke entydigt, gives der en fejl.
+
+- **Svar:** `complete`, `skip`, `approve`, `reject`, `undo` og `settle` kan returnere `log_id` (`response_variable` i en automation). `create_chore` returnerer `chore_id`. Er en afkrydsning en no-op, er `log_id` `null`.
+- **`snooze`** har også `person` til opgaver med `each`.
+- **`create_chore` / `update_chore`:** Felterne er `name`, `description`, `points`, `assignees`, `assignment`, `repeat` (`none`/`interval`/`weekly`/`yearly`), `due`, `every`, `unit`, `from`, `weekdays` (`mon`–`sun`), `dates` (`MM-DD`), `due_time`, `notify_before`, `complete_window`, `approval` og `builtin_notify`. `update_chore` ændrer kun de angivne felter. Skiftes `repeat`, nulstilles de andre gentagelsesfelter. Betingelser sættes i brugerfladen (trin 7).
+- Opret, ret og slet genindlæser integrationen.
 
 Fejl giver `ServiceValidationError` med oversatte beskeder.
 

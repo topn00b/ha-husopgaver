@@ -294,6 +294,37 @@ class HusopgaverCoordinator:
                 return person
         return None
 
+    def resolve_chore(self, ref: str) -> Chore:
+        """Find en opgave ud fra id, todo-punkt eller navn (uden forskel på store/små bogstaver)."""
+        ref = ref.strip()
+        if ref in self.chores:
+            return self.chores[ref]
+        head = ref.split("|", 1)[0]
+        if "|" in ref and head in self.chores:
+            return self.chores[head]
+        matches = [c for c in self.chores.values() if c.name.casefold() == ref.casefold()]
+        if len(matches) > 1:
+            raise validation_error("ambiguous_chore", chore=ref)
+        if not matches:
+            raise validation_error("unknown_chore", chore=ref)
+        return matches[0]
+
+    def resolve_person(self, ref: str) -> Person:
+        """Find en person ud fra id, navn eller person-entitet."""
+        ref = ref.strip()
+        if ref in self.persons:
+            return self.persons[ref]
+        matches = [
+            p
+            for p in self.persons.values()
+            if p.name.casefold() == ref.casefold() or p.person_entity == ref
+        ]
+        if len(matches) > 1:
+            raise validation_error("ambiguous_person", person=ref)
+        if not matches:
+            raise validation_error("unknown_person", person=ref)
+        return matches[0]
+
     def _chore(self, chore_id: str) -> Chore:
         chore = self.chores.get(chore_id)
         if chore is None:
@@ -352,6 +383,49 @@ class HusopgaverCoordinator:
         self._refresh(dt_util.utcnow())
 
     @callback
+    def create_chore(self, data: dict[str, Any]) -> str:
+        """Opret en opgave ud fra rå data. Integrationen genindlæses. Returnerer id."""
+        try:
+            chore = Chore.from_dict("ny", data)
+        except (KeyError, TypeError, ValueError) as err:
+            raise validation_error("invalid_chore", error=err) from err
+        self._check_assignees(chore)
+        subentry = ConfigSubentry(
+            data=MappingProxyType(data),
+            subentry_type=SUBENTRY_CHORE,
+            title=chore.name,
+            unique_id=None,
+        )
+        self.hass.config_entries.async_add_subentry(self.entry, subentry)
+        return subentry.subentry_id
+
+    @callback
+    def update_chore(self, chore_id: str, data: dict[str, Any]) -> None:
+        """Erstat en opgaves data. Integrationen genindlæses, hvis noget ændrer sig."""
+        self._chore(chore_id)
+        try:
+            chore = Chore.from_dict(chore_id, data)
+        except (KeyError, TypeError, ValueError) as err:
+            raise validation_error("invalid_chore", error=err) from err
+        self._check_assignees(chore)
+        subentry = self.entry.subentries[chore_id]
+        if dict(subentry.data) == data:
+            return
+        self.hass.config_entries.async_update_subentry(
+            self.entry, subentry, data=data, title=chore.name
+        )
+
+    def chore_data(self, chore_id: str) -> dict[str, Any]:
+        """Opgavens rå data, som de ligger i subentry."""
+        self._chore(chore_id)
+        return dict(self.entry.subentries[chore_id].data)
+
+    def _check_assignees(self, chore: Chore) -> None:
+        for person_id in chore.assignees:
+            if person_id not in self.persons:
+                raise validation_error("unknown_person", person=person_id)
+
+    @callback
     def create_one_off(
         self,
         person_id: str,
@@ -359,48 +433,28 @@ class HusopgaverCoordinator:
         description: str | None,
         due: datetime,
         due_time: time | None,
-    ) -> None:
-        """Opret en engangsopgave hos personen med 1 point. Integrationen genindlæses."""
-        data: dict[str, Any] = {
-            "name": name,
-            "description": description,
-            "points": DEFAULT_POINTS,
-            "assignees": [person_id],
-            "assignment": Assignment.FIXED.value,
-            "schedule": {"kind": ScheduleKind.NONE.value, "due": due.isoformat()},
-            "due_time": None if due_time is None else due_time.isoformat(),
-        }
-        try:
-            Chore.from_dict("ny", data)
-        except ValueError as err:
-            raise validation_error("invalid_chore", error=err) from err
-        self.hass.config_entries.async_add_subentry(
-            self.entry,
-            ConfigSubentry(
-                data=MappingProxyType(data),
-                subentry_type=SUBENTRY_CHORE,
-                title=data["name"],
-                unique_id=None,
-            ),
+    ) -> str:
+        """Opret en engangsopgave hos personen med 1 point."""
+        return self.create_chore(
+            {
+                "name": name,
+                "description": description,
+                "points": DEFAULT_POINTS,
+                "assignees": [person_id],
+                "assignment": Assignment.FIXED.value,
+                "schedule": {"kind": ScheduleKind.NONE.value, "due": due.isoformat()},
+                "due_time": None if due_time is None else due_time.isoformat(),
+            }
         )
 
     @callback
     def update_chore_text(
         self, chore_id: str, name: str, description: str | None
     ) -> None:
-        """Ret navn og beskrivelse. Integrationen genindlæses."""
-        chore = self._chore(chore_id)
-        name = name.strip()
-        if not name:
-            raise validation_error("invalid_chore", error="name")
-        if name == chore.name and description == chore.description:
-            return
-        subentry = self.entry.subentries[chore_id]
-        self.hass.config_entries.async_update_subentry(
-            self.entry,
-            subentry,
-            data={**subentry.data, "name": name, "description": description},
-            title=name,
+        """Ret navn og beskrivelse."""
+        data = self.chore_data(chore_id)
+        self.update_chore(
+            chore_id, data | {"name": name.strip(), "description": description}
         )
 
     @callback

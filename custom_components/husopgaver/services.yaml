@@ -1,0 +1,280 @@
+complete:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:
+    person:
+      selector:
+        text:
+skip:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:
+    person:
+      selector:
+        text:
+reassign:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:
+    person:
+      required: true
+      selector:
+        text:
+snooze:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:
+    duration:
+      required: true
+      selector:
+        duration:
+    person:
+      selector:
+        text:
+approve:
+  fields:
+    log_id:
+      selector:
+        text:
+    chore:
+      selector:
+        text:
+reject:
+  fields:
+    log_id:
+      selector:
+        text:
+    chore:
+      selector:
+        text:
+undo:
+  fields:
+    log_id:
+      selector:
+        text:
+    chore:
+      selector:
+        text:
+settle:
+  fields:
+    person:
+      required: true
+      selector:
+        text:
+create_chore:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    description:
+      selector:
+        text:
+          multiline: true
+    points:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    assignees:
+      required: true
+      selector:
+        text:
+          multiple: true
+    assignment:
+      selector:
+        select:
+          translation_key: assignment
+          options:
+          - fixed
+          - round_robin
+          - least_points
+          - each
+    repeat:
+      required: true
+      selector:
+        select:
+          translation_key: repeat
+          options:
+          - none
+          - interval
+          - weekly
+          - yearly
+    due:
+      selector:
+        datetime:
+    every:
+      selector:
+        number:
+          min: 1
+          max: 365
+          mode: box
+    unit:
+      selector:
+        select:
+          translation_key: unit
+          options:
+          - day
+          - week
+          - month
+    from:
+      selector:
+        select:
+          translation_key: from
+          options:
+          - due
+          - completion
+    weekdays:
+      selector:
+        select:
+          translation_key: weekdays
+          options:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+          - sat
+          - sun
+          multiple: true
+    dates:
+      selector:
+        text:
+          multiple: true
+    due_time:
+      selector:
+        time:
+    notify_before:
+      selector:
+        duration:
+    complete_window:
+      selector:
+        duration:
+    approval:
+      selector:
+        select:
+          translation_key: approval
+          options:
+          - auto
+          - always
+          - never
+    builtin_notify:
+      selector:
+        boolean:
+update_chore:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:
+    name:
+      selector:
+        text:
+    description:
+      selector:
+        text:
+          multiline: true
+    points:
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+    assignees:
+      selector:
+        text:
+          multiple: true
+    assignment:
+      selector:
+        select:
+          translation_key: assignment
+          options:
+          - fixed
+          - round_robin
+          - least_points
+          - each
+    repeat:
+      selector:
+        select:
+          translation_key: repeat
+          options:
+          - none
+          - interval
+          - weekly
+          - yearly
+    due:
+      selector:
+        datetime:
+    every:
+      selector:
+        number:
+          min: 1
+          max: 365
+          mode: box
+    unit:
+      selector:
+        select:
+          translation_key: unit
+          options:
+          - day
+          - week
+          - month
+    from:
+      selector:
+        select:
+          translation_key: from
+          options:
+          - due
+          - completion
+    weekdays:
+      selector:
+        select:
+          translation_key: weekdays
+          options:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+          - sat
+          - sun
+          multiple: true
+    dates:
+      selector:
+        text:
+          multiple: true
+    due_time:
+      selector:
+        time:
+    notify_before:
+      selector:
+        duration:
+    complete_window:
+      selector:
+        duration:
+    approval:
+      selector:
+        select:
+          translation_key: approval
+          options:
+          - auto
+          - always
+          - never
+    builtin_notify:
+      selector:
+        boolean:
+delete_chore:
+  fields:
+    chore:
+      required: true
+      selector:
+        text:

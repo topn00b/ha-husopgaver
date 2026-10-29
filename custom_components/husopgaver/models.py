@@ -150,7 +150,10 @@ class Schedule:
     def from_dict(cls, data: dict[str, Any]) -> Self:
         kind = ScheduleKind(data["kind"])
         if kind is ScheduleKind.NONE:
-            return cls(kind=kind, due=_dt_from_str(data.get("due")))
+            due = _dt_from_str(data.get("due"))
+            if due is None:
+                raise ValueError("En engangsopgave skal have et forfald")
+            return cls(kind=kind, due=due)
         if kind is ScheduleKind.INTERVAL:
             every = int(data["every"])
             if every < 1:

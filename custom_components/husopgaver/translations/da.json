@@ -73,6 +73,15 @@
     },
     "invalid_chore": {
       "message": "Opgaven er ikke gyldig: {error}"
+    },
+    "not_loaded": {
+      "message": "Husopgaver er ikke sat op."
+    },
+    "ambiguous_chore": {
+      "message": "Flere opgaver hedder {chore}. Brug opgavens id."
+    },
+    "ambiguous_person": {
+      "message": "Flere personer hedder {person}. Brug personens id."
     }
   },
   "entity": {
@@ -90,6 +99,331 @@
     "sensor": {
       "points": {
         "name": "{person} point"
+      }
+    }
+  },
+  "services": {
+    "complete": {
+      "name": "Kryds opgave af",
+      "description": "Kryds en opgave af. Pointene går til den angivne person eller den tildelte.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        },
+        "person": {
+          "name": "Person",
+          "description": "Personens id, navn eller person-entitet."
+        }
+      }
+    },
+    "skip": {
+      "name": "Spring opgave over",
+      "description": "Spring den aktuelle forekomst over uden point.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        },
+        "person": {
+          "name": "Person",
+          "description": "Personens id, navn eller person-entitet."
+        }
+      }
+    },
+    "reassign": {
+      "name": "Giv opgave til en anden",
+      "description": "Giv den aktuelle forekomst til en anden person.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        },
+        "person": {
+          "name": "Person",
+          "description": "Personens id, navn eller person-entitet."
+        }
+      }
+    },
+    "snooze": {
+      "name": "Udsæt opgave",
+      "description": "Flyt den aktuelle forekomst senere. Gentagelsens rytme er uændret.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        },
+        "duration": {
+          "name": "Varighed",
+          "description": "Hvor længe der udsættes."
+        },
+        "person": {
+          "name": "Person",
+          "description": "Personens id, navn eller person-entitet."
+        }
+      }
+    },
+    "approve": {
+      "name": "Godkend",
+      "description": "Godkend en afkrydsning. Kræver en person, der kan godkende.",
+      "fields": {
+        "log_id": {
+          "name": "Log-id",
+          "description": "Log-posten, fx fra et event."
+        },
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        }
+      }
+    },
+    "reject": {
+      "name": "Afvis",
+      "description": "Afvis en afkrydsning. Kræver en person, der kan godkende.",
+      "fields": {
+        "log_id": {
+          "name": "Log-id",
+          "description": "Log-posten, fx fra et event."
+        },
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        }
+      }
+    },
+    "undo": {
+      "name": "Fortryd",
+      "description": "Fortryd den seneste handling på en opgave inden for fortryd-vinduet.",
+      "fields": {
+        "log_id": {
+          "name": "Log-id",
+          "description": "Log-posten, fx fra et event."
+        },
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        }
+      }
+    },
+    "settle": {
+      "name": "Udbetal point",
+      "description": "Nulstil point siden udbetaling. Der slettes intet.",
+      "fields": {
+        "person": {
+          "name": "Person",
+          "description": "Personens id, navn eller person-entitet."
+        }
+      }
+    },
+    "create_chore": {
+      "name": "Opret opgave",
+      "description": "Opret en opgave.",
+      "fields": {
+        "name": {
+          "name": "Navn",
+          "description": "Opgavens navn."
+        },
+        "description": {
+          "name": "Beskrivelse",
+          "description": "Valgfri beskrivelse."
+        },
+        "points": {
+          "name": "Point",
+          "description": "Point for at lave opgaven."
+        },
+        "assignees": {
+          "name": "Personer",
+          "description": "Hvem der kan få opgaven, i rækkefølge (id, navn eller person-entitet)."
+        },
+        "assignment": {
+          "name": "Tildeling",
+          "description": "Hvordan opgaven tildeles."
+        },
+        "repeat": {
+          "name": "Gentagelse",
+          "description": "Hvordan opgaven gentages."
+        },
+        "due": {
+          "name": "Forfald",
+          "description": "Dato og tid for en engangsopgave."
+        },
+        "every": {
+          "name": "Hver",
+          "description": "Interval mellem forekomsterne."
+        },
+        "unit": {
+          "name": "Enhed",
+          "description": "Enhed for intervallet."
+        },
+        "from": {
+          "name": "Regnes fra",
+          "description": "Regn næste forekomst fra forfaldet eller fra udførelsen."
+        },
+        "weekdays": {
+          "name": "Ugedage",
+          "description": "Dage for en ugentlig opgave."
+        },
+        "dates": {
+          "name": "Datoer",
+          "description": "Datoer for en årlig opgave som MM-DD."
+        },
+        "due_time": {
+          "name": "Tidspunkt",
+          "description": "Valgfrit klokkeslæt."
+        },
+        "notify_before": {
+          "name": "Påmindelse",
+          "description": "Send en påmindelse så længe før."
+        },
+        "complete_window": {
+          "name": "Vindue for afkrydsning",
+          "description": "Opgaven kan først krydses af så længe før forfald."
+        },
+        "approval": {
+          "name": "Godkendelse",
+          "description": "Om afkrydsninger skal godkendes."
+        },
+        "builtin_notify": {
+          "name": "Indbygget notifikation",
+          "description": "Send notifikationer til personens telefon."
+        }
+      }
+    },
+    "update_chore": {
+      "name": "Ret opgave",
+      "description": "Ret en opgave. Kun de angivne felter ændres.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        },
+        "name": {
+          "name": "Navn",
+          "description": "Opgavens navn."
+        },
+        "description": {
+          "name": "Beskrivelse",
+          "description": "Valgfri beskrivelse."
+        },
+        "points": {
+          "name": "Point",
+          "description": "Point for at lave opgaven."
+        },
+        "assignees": {
+          "name": "Personer",
+          "description": "Hvem der kan få opgaven, i rækkefølge (id, navn eller person-entitet)."
+        },
+        "assignment": {
+          "name": "Tildeling",
+          "description": "Hvordan opgaven tildeles."
+        },
+        "repeat": {
+          "name": "Gentagelse",
+          "description": "Hvordan opgaven gentages."
+        },
+        "due": {
+          "name": "Forfald",
+          "description": "Dato og tid for en engangsopgave."
+        },
+        "every": {
+          "name": "Hver",
+          "description": "Interval mellem forekomsterne."
+        },
+        "unit": {
+          "name": "Enhed",
+          "description": "Enhed for intervallet."
+        },
+        "from": {
+          "name": "Regnes fra",
+          "description": "Regn næste forekomst fra forfaldet eller fra udførelsen."
+        },
+        "weekdays": {
+          "name": "Ugedage",
+          "description": "Dage for en ugentlig opgave."
+        },
+        "dates": {
+          "name": "Datoer",
+          "description": "Datoer for en årlig opgave som MM-DD."
+        },
+        "due_time": {
+          "name": "Tidspunkt",
+          "description": "Valgfrit klokkeslæt."
+        },
+        "notify_before": {
+          "name": "Påmindelse",
+          "description": "Send en påmindelse så længe før."
+        },
+        "complete_window": {
+          "name": "Vindue for afkrydsning",
+          "description": "Opgaven kan først krydses af så længe før forfald."
+        },
+        "approval": {
+          "name": "Godkendelse",
+          "description": "Om afkrydsninger skal godkendes."
+        },
+        "builtin_notify": {
+          "name": "Indbygget notifikation",
+          "description": "Send notifikationer til personens telefon."
+        }
+      }
+    },
+    "delete_chore": {
+      "name": "Slet opgave",
+      "description": "Slet en opgave. Historikken bevares.",
+      "fields": {
+        "chore": {
+          "name": "Opgave",
+          "description": "Opgavens id, todo-punkt eller navn."
+        }
+      }
+    }
+  },
+  "selector": {
+    "assignment": {
+      "options": {
+        "fixed": "Fast",
+        "round_robin": "På skift",
+        "least_points": "Færrest point",
+        "each": "Alle"
+      }
+    },
+    "repeat": {
+      "options": {
+        "none": "Engangs",
+        "interval": "Interval",
+        "weekly": "Ugentlig",
+        "yearly": "Årlig"
+      }
+    },
+    "unit": {
+      "options": {
+        "day": "Dage",
+        "week": "Uger",
+        "month": "Måneder"
+      }
+    },
+    "from": {
+      "options": {
+        "due": "Forfald",
+        "completion": "Udførelse"
+      }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Mandag",
+        "tue": "Tirsdag",
+        "wed": "Onsdag",
+        "thu": "Torsdag",
+        "fri": "Fredag",
+        "sat": "Lørdag",
+        "sun": "Søndag"
+      }
+    },
+    "approval": {
+      "options": {
+        "auto": "Følg personen",
+        "always": "Altid",
+        "never": "Aldrig"
       }
     }
   }

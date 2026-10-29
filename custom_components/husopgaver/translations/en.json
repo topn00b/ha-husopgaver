@@ -73,6 +73,15 @@
     },
     "invalid_chore": {
       "message": "The chore is not valid: {error}"
+    },
+    "not_loaded": {
+      "message": "Husopgaver is not set up."
+    },
+    "ambiguous_chore": {
+      "message": "Several chores are called {chore}. Use the chore's id."
+    },
+    "ambiguous_person": {
+      "message": "Several people are called {person}. Use the person's id."
     }
   },
   "entity": {
@@ -90,6 +99,331 @@
     "sensor": {
       "points": {
         "name": "{person} points"
+      }
+    }
+  },
+  "services": {
+    "complete": {
+      "name": "Complete chore",
+      "description": "Complete a chore. Points go to the given person, or to the assignee.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        },
+        "person": {
+          "name": "Person",
+          "description": "The person's id, name or person entity."
+        }
+      }
+    },
+    "skip": {
+      "name": "Skip chore",
+      "description": "Skip the current occurrence without points.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        },
+        "person": {
+          "name": "Person",
+          "description": "The person's id, name or person entity."
+        }
+      }
+    },
+    "reassign": {
+      "name": "Give chore to someone else",
+      "description": "Give the current occurrence to another person.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        },
+        "person": {
+          "name": "Person",
+          "description": "The person's id, name or person entity."
+        }
+      }
+    },
+    "snooze": {
+      "name": "Snooze chore",
+      "description": "Move the current occurrence later. The repeat rhythm is unchanged.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long to snooze."
+        },
+        "person": {
+          "name": "Person",
+          "description": "The person's id, name or person entity."
+        }
+      }
+    },
+    "approve": {
+      "name": "Approve",
+      "description": "Approve a completion. Requires a person who can approve.",
+      "fields": {
+        "log_id": {
+          "name": "Log id",
+          "description": "The log entry, for example from an event."
+        },
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        }
+      }
+    },
+    "reject": {
+      "name": "Reject",
+      "description": "Reject a completion. Requires a person who can approve.",
+      "fields": {
+        "log_id": {
+          "name": "Log id",
+          "description": "The log entry, for example from an event."
+        },
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        }
+      }
+    },
+    "undo": {
+      "name": "Undo",
+      "description": "Undo the latest action on a chore within the undo window.",
+      "fields": {
+        "log_id": {
+          "name": "Log id",
+          "description": "The log entry, for example from an event."
+        },
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        }
+      }
+    },
+    "settle": {
+      "name": "Settle points",
+      "description": "Reset points since settlement. Nothing is deleted.",
+      "fields": {
+        "person": {
+          "name": "Person",
+          "description": "The person's id, name or person entity."
+        }
+      }
+    },
+    "create_chore": {
+      "name": "Create chore",
+      "description": "Create a chore.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "The chore's name."
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional description."
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points for completing the chore."
+        },
+        "assignees": {
+          "name": "People",
+          "description": "Who can get the chore, in order (id, name or person entity)."
+        },
+        "assignment": {
+          "name": "Assignment",
+          "description": "How the chore is assigned."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How the chore repeats."
+        },
+        "due": {
+          "name": "Due",
+          "description": "Due date and time for a one-off chore."
+        },
+        "every": {
+          "name": "Every",
+          "description": "Interval between occurrences."
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of the interval."
+        },
+        "from": {
+          "name": "Counted from",
+          "description": "Count the next occurrence from the due date or from completion."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Days for a weekly chore."
+        },
+        "dates": {
+          "name": "Dates",
+          "description": "Dates for a yearly chore as MM-DD."
+        },
+        "due_time": {
+          "name": "Time",
+          "description": "Optional time of day."
+        },
+        "notify_before": {
+          "name": "Reminder",
+          "description": "Send a reminder this long before."
+        },
+        "complete_window": {
+          "name": "Completion window",
+          "description": "The chore can only be completed this long before it is due."
+        },
+        "approval": {
+          "name": "Approval",
+          "description": "Whether completions must be approved."
+        },
+        "builtin_notify": {
+          "name": "Built-in notification",
+          "description": "Send notifications to the person's phone."
+        }
+      }
+    },
+    "update_chore": {
+      "name": "Update chore",
+      "description": "Change a chore. Only the given fields change.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        },
+        "name": {
+          "name": "Name",
+          "description": "The chore's name."
+        },
+        "description": {
+          "name": "Description",
+          "description": "Optional description."
+        },
+        "points": {
+          "name": "Points",
+          "description": "Points for completing the chore."
+        },
+        "assignees": {
+          "name": "People",
+          "description": "Who can get the chore, in order (id, name or person entity)."
+        },
+        "assignment": {
+          "name": "Assignment",
+          "description": "How the chore is assigned."
+        },
+        "repeat": {
+          "name": "Repeat",
+          "description": "How the chore repeats."
+        },
+        "due": {
+          "name": "Due",
+          "description": "Due date and time for a one-off chore."
+        },
+        "every": {
+          "name": "Every",
+          "description": "Interval between occurrences."
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of the interval."
+        },
+        "from": {
+          "name": "Counted from",
+          "description": "Count the next occurrence from the due date or from completion."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Days for a weekly chore."
+        },
+        "dates": {
+          "name": "Dates",
+          "description": "Dates for a yearly chore as MM-DD."
+        },
+        "due_time": {
+          "name": "Time",
+          "description": "Optional time of day."
+        },
+        "notify_before": {
+          "name": "Reminder",
+          "description": "Send a reminder this long before."
+        },
+        "complete_window": {
+          "name": "Completion window",
+          "description": "The chore can only be completed this long before it is due."
+        },
+        "approval": {
+          "name": "Approval",
+          "description": "Whether completions must be approved."
+        },
+        "builtin_notify": {
+          "name": "Built-in notification",
+          "description": "Send notifications to the person's phone."
+        }
+      }
+    },
+    "delete_chore": {
+      "name": "Delete chore",
+      "description": "Delete a chore. The history is kept.",
+      "fields": {
+        "chore": {
+          "name": "Chore",
+          "description": "The chore's id, to-do item or name."
+        }
+      }
+    }
+  },
+  "selector": {
+    "assignment": {
+      "options": {
+        "fixed": "Fixed",
+        "round_robin": "Take turns",
+        "least_points": "Fewest points",
+        "each": "Everyone"
+      }
+    },
+    "repeat": {
+      "options": {
+        "none": "One-off",
+        "interval": "Interval",
+        "weekly": "Weekly",
+        "yearly": "Yearly"
+      }
+    },
+    "unit": {
+      "options": {
+        "day": "Days",
+        "week": "Weeks",
+        "month": "Months"
+      }
+    },
+    "from": {
+      "options": {
+        "due": "Due date",
+        "completion": "Completion"
+      }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    },
+    "approval": {
+      "options": {
+        "auto": "Follow the person",
+        "always": "Always",
+        "never": "Never"
       }
     }
   }

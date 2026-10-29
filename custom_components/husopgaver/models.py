@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
+import re
 from typing import Any, Self
 
 from homeassistant.util import dt as dt_util
@@ -90,6 +91,14 @@ def _parse_month_day(value: str) -> tuple[int, int]:
     return month, day
 
 
+def _parse_color(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+        raise ValueError(f"Ugyldig farve: {value!r} (brug #rrggbb)")
+    return value.lower()
+
+
 @dataclass(frozen=True, slots=True)
 class Person:
     """En deltager i husholdningen."""
@@ -101,6 +110,7 @@ class Person:
     can_approve: bool = False
     requires_approval: bool = False
     active: bool = True
+    color: str | None = None  # "#rrggbb", til dashboardkortet
 
     @classmethod
     def from_dict(cls, person_id: str, data: dict[str, Any]) -> Self:
@@ -121,6 +131,7 @@ class Person:
             can_approve=bool(data.get("can_approve", False)),
             requires_approval=bool(data.get("requires_approval", False)),
             active=bool(data.get("active", True)),
+            color=_parse_color(data.get("color") or None),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -131,6 +142,7 @@ class Person:
             "can_approve": self.can_approve,
             "requires_approval": self.requires_approval,
             "active": self.active,
+            "color": self.color,
         }
 
 

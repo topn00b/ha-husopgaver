@@ -426,5 +426,199 @@
         "never": "Never"
       }
     }
+  },
+  "config_subentries": {
+    "person": {
+      "initiate_flow": {
+        "user": "Add person"
+      },
+      "entry_type": "Person",
+      "step": {
+        "user": {
+          "title": "Add person",
+          "data": {
+            "name": "Name",
+            "person_entity": "Person in Home Assistant",
+            "notify_target": "Notifications to",
+            "color": "Color",
+            "can_approve": "Can approve",
+            "requires_approval": "Completions must be approved",
+            "active": "Active"
+          },
+          "data_description": {
+            "name": "Shown on lists and the dashboard.",
+            "person_entity": "Used for absence and to know who may approve.",
+            "notify_target": "For example the companion app. Children don't need one.",
+            "color": "Used on the dashboard card.",
+            "can_approve": "Typically adults.",
+            "requires_approval": "Typically children.",
+            "active": "Inactive people get no chores, but their history is kept."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit person",
+          "data": {
+            "name": "Name",
+            "person_entity": "Person in Home Assistant",
+            "notify_target": "Notifications to",
+            "color": "Color",
+            "can_approve": "Can approve",
+            "requires_approval": "Completions must be approved",
+            "active": "Active"
+          },
+          "data_description": {
+            "name": "Shown on lists and the dashboard.",
+            "person_entity": "Used for absence and to know who may approve.",
+            "notify_target": "For example the companion app. Children don't need one.",
+            "color": "Used on the dashboard card.",
+            "can_approve": "Typically adults.",
+            "requires_approval": "Typically children.",
+            "active": "Inactive people get no chores, but their history is kept."
+          }
+        }
+      },
+      "error": {
+        "invalid": "Not valid: {error}"
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
+    },
+    "chore": {
+      "initiate_flow": {
+        "user": "Add chore"
+      },
+      "entry_type": "Chore",
+      "step": {
+        "user": {
+          "title": "Add chore",
+          "data": {
+            "name": "Name",
+            "description": "Description",
+            "points": "Points",
+            "assignees": "People",
+            "assignment": "Assignment",
+            "repeat": "Repeat",
+            "due_time": "Time",
+            "notify_before": "Reminder before"
+          },
+          "data_description": {
+            "assignees": "Only these people can get the chore. The order is used when taking turns.",
+            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own.",
+            "due_time": "Optional. Without a time the chore is due all day.",
+            "notify_before": "Optional reminder before it is due."
+          },
+          "sections": {
+            "advanced": {
+              "name": "Advanced",
+              "data": {
+                "approval": "Approval",
+                "complete_window": "Can be completed from",
+                "builtin_notify": "Built-in notifications"
+              },
+              "data_description": {
+                "approval": "Follow the person: only people whose completions must be approved.",
+                "complete_window": "Optional. How long before it is due the chore can be completed. Without it: when it appears on the list.",
+                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events."
+              }
+            }
+          }
+        },
+        "reconfigure": {
+          "title": "Edit chore",
+          "data": {
+            "name": "Name",
+            "description": "Description",
+            "points": "Points",
+            "assignees": "People",
+            "assignment": "Assignment",
+            "repeat": "Repeat",
+            "due_time": "Time",
+            "notify_before": "Reminder before"
+          },
+          "data_description": {
+            "assignees": "Only these people can get the chore. The order is used when taking turns.",
+            "assignment": "Fixed: always the first. Take turns: in order. Fewest points: the one with the fewest points in the last 30 days. Everyone: each person has their own.",
+            "due_time": "Optional. Without a time the chore is due all day.",
+            "notify_before": "Optional reminder before it is due."
+          },
+          "sections": {
+            "advanced": {
+              "name": "Advanced",
+              "data": {
+                "approval": "Approval",
+                "complete_window": "Can be completed from",
+                "builtin_notify": "Built-in notifications"
+              },
+              "data_description": {
+                "approval": "Follow the person: only people whose completions must be approved.",
+                "complete_window": "Optional. How long before it is due the chore can be completed. Without it: when it appears on the list.",
+                "builtin_notify": "Send notifications to the person's phone. Otherwise use your own automations on the events."
+              }
+            }
+          }
+        },
+        "schedule_none": {
+          "title": "One-off",
+          "data": {
+            "due": "Due"
+          }
+        },
+        "schedule_interval": {
+          "title": "Interval",
+          "data": {
+            "every": "Every",
+            "unit": "Unit",
+            "from": "Counted from"
+          },
+          "data_description": {
+            "from": "Due date keeps a fixed rhythm. Completion counts from when it was done."
+          }
+        },
+        "schedule_weekly": {
+          "title": "Weekly",
+          "data": {
+            "weekdays": "Weekdays"
+          }
+        },
+        "schedule_yearly": {
+          "title": "Yearly",
+          "data": {
+            "dates": "Dates"
+          },
+          "data_description": {
+            "dates": "As MM-DD, for example 10-01. 29 February can't be used."
+          }
+        }
+      },
+      "error": {
+        "invalid": "Not valid: {error}"
+      },
+      "abort": {
+        "reconfigure_successful": "Saved.",
+        "no_persons": "Add a person first."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Settings",
+        "data": {
+          "upcoming_days": "Days ahead on the lists",
+          "points_window_days": "Points window (days)",
+          "absence_hours": "Absence after (hours)",
+          "undo_minutes": "Undo window (minutes)",
+          "all_list": "Create the list \"All chores\""
+        },
+        "data_description": {
+          "upcoming_days": "Upcoming chores are shown this many days ahead.",
+          "points_window_days": "Used by \"Fewest points\".",
+          "absence_hours": "A person away from home for longer gets no new chores.",
+          "undo_minutes": "How long a completion can be undone.",
+          "all_list": "A to-do list with everyone's chores."
+        }
+      }
+    }
   }
 }

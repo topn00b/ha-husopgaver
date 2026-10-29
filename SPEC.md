@@ -207,8 +207,12 @@ Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `no
   - Fortryd-vindue (10 minutter)
   - Om listen "Alle opgaver" skal oprettes
 - **Subentry "Person":** Knappen "Tilføj person" og en formular. "Ret" og "Slet" findes på hver person.
+  - Felter: navn, person i HA, notify-mål (liste over notify-tjenester, eller skriv selv), farve, kan godkende, afkrydsninger skal godkendes, aktiv.
 - **Subentry "Opgave":** Knappen "Tilføj opgave" og *én* formular. Felterne er navn, beskrivelse og point, flueben for personerne, strategi, gentagelse og felterne for den valgte gentagelse, tidspunkt, påmindelse og avanceret (betingelse, godkendelse, vindue).
-  - Vælges der en anden gentagelsestype, vises næste trin med de felter, der hører til.
+  - Næste trin viser altid felterne for den valgte gentagelse (engangs: forfald; interval: hver, enhed, regnes fra; ugentlig: ugedage; årlig: datoer). Ved "Ret" er felterne udfyldt, hvis typen er den samme.
+  - Avanceret (godkendelse, vindue for afkrydsning, indbyggede notifikationer) er en sammenklappet sektion. Betingelser kommer i trin 7.
+  - Ved "Ret" bevares rækkefølgen af personer, der stadig er valgt. Nye personer kommer bagerst.
+  - Der kan ikke oprettes opgaver, før der findes mindst én person.
 - **Sletning:** Når en person eller opgave slettes, bevares loggen.
 
 ## 12. Tests (`pytest-homeassistant-custom-component`, kører i GitHub Actions)

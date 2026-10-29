@@ -426,5 +426,199 @@
         "never": "Aldrig"
       }
     }
+  },
+  "config_subentries": {
+    "person": {
+      "initiate_flow": {
+        "user": "Tilføj person"
+      },
+      "entry_type": "Person",
+      "step": {
+        "user": {
+          "title": "Tilføj person",
+          "data": {
+            "name": "Navn",
+            "person_entity": "Person i Home Assistant",
+            "notify_target": "Notifikationer til",
+            "color": "Farve",
+            "can_approve": "Kan godkende",
+            "requires_approval": "Afkrydsninger skal godkendes",
+            "active": "Aktiv"
+          },
+          "data_description": {
+            "name": "Vises på listerne og dashboardet.",
+            "person_entity": "Bruges til fravær og til at vide, hvem der må godkende.",
+            "notify_target": "Fx companion-appen. Børn behøver ingen.",
+            "color": "Bruges på dashboardkortet.",
+            "can_approve": "Typisk voksne.",
+            "requires_approval": "Typisk børn.",
+            "active": "Inaktive får ingen opgaver, men historikken bevares."
+          }
+        },
+        "reconfigure": {
+          "title": "Ret person",
+          "data": {
+            "name": "Navn",
+            "person_entity": "Person i Home Assistant",
+            "notify_target": "Notifikationer til",
+            "color": "Farve",
+            "can_approve": "Kan godkende",
+            "requires_approval": "Afkrydsninger skal godkendes",
+            "active": "Aktiv"
+          },
+          "data_description": {
+            "name": "Vises på listerne og dashboardet.",
+            "person_entity": "Bruges til fravær og til at vide, hvem der må godkende.",
+            "notify_target": "Fx companion-appen. Børn behøver ingen.",
+            "color": "Bruges på dashboardkortet.",
+            "can_approve": "Typisk voksne.",
+            "requires_approval": "Typisk børn.",
+            "active": "Inaktive får ingen opgaver, men historikken bevares."
+          }
+        }
+      },
+      "error": {
+        "invalid": "Ikke gyldig: {error}"
+      },
+      "abort": {
+        "reconfigure_successful": "Gemt."
+      }
+    },
+    "chore": {
+      "initiate_flow": {
+        "user": "Tilføj opgave"
+      },
+      "entry_type": "Opgave",
+      "step": {
+        "user": {
+          "title": "Tilføj opgave",
+          "data": {
+            "name": "Navn",
+            "description": "Beskrivelse",
+            "points": "Point",
+            "assignees": "Personer",
+            "assignment": "Tildeling",
+            "repeat": "Gentagelse",
+            "due_time": "Tidspunkt",
+            "notify_before": "Påmindelse før"
+          },
+          "data_description": {
+            "assignees": "Kun disse personer kan få opgaven. Rækkefølgen bruges ved \"På skift\".",
+            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen.",
+            "due_time": "Valgfrit. Uden tidspunkt er opgaven forfalden hele dagen.",
+            "notify_before": "Valgfri påmindelse før forfald."
+          },
+          "sections": {
+            "advanced": {
+              "name": "Avanceret",
+              "data": {
+                "approval": "Godkendelse",
+                "complete_window": "Kan krydses af fra",
+                "builtin_notify": "Indbyggede notifikationer"
+              },
+              "data_description": {
+                "approval": "Følg personen: kun personer, hvis afkrydsninger skal godkendes.",
+                "complete_window": "Valgfrit. Hvor længe før forfald opgaven kan krydses af. Uden: når den kommer på listen.",
+                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene."
+              }
+            }
+          }
+        },
+        "reconfigure": {
+          "title": "Ret opgave",
+          "data": {
+            "name": "Navn",
+            "description": "Beskrivelse",
+            "points": "Point",
+            "assignees": "Personer",
+            "assignment": "Tildeling",
+            "repeat": "Gentagelse",
+            "due_time": "Tidspunkt",
+            "notify_before": "Påmindelse før"
+          },
+          "data_description": {
+            "assignees": "Kun disse personer kan få opgaven. Rækkefølgen bruges ved \"På skift\".",
+            "assignment": "Fast: altid den første. På skift: i rækkefølge. Færrest point: den med færrest point de seneste 30 dage. Alle: hver person har sin egen.",
+            "due_time": "Valgfrit. Uden tidspunkt er opgaven forfalden hele dagen.",
+            "notify_before": "Valgfri påmindelse før forfald."
+          },
+          "sections": {
+            "advanced": {
+              "name": "Avanceret",
+              "data": {
+                "approval": "Godkendelse",
+                "complete_window": "Kan krydses af fra",
+                "builtin_notify": "Indbyggede notifikationer"
+              },
+              "data_description": {
+                "approval": "Følg personen: kun personer, hvis afkrydsninger skal godkendes.",
+                "complete_window": "Valgfrit. Hvor længe før forfald opgaven kan krydses af. Uden: når den kommer på listen.",
+                "builtin_notify": "Send notifikationer til personens telefon. Ellers bruges egne automationer på eventsene."
+              }
+            }
+          }
+        },
+        "schedule_none": {
+          "title": "Engangsopgave",
+          "data": {
+            "due": "Forfald"
+          }
+        },
+        "schedule_interval": {
+          "title": "Interval",
+          "data": {
+            "every": "Hver",
+            "unit": "Enhed",
+            "from": "Regnes fra"
+          },
+          "data_description": {
+            "from": "Forfald holder en fast rytme. Udførelse regner fra, hvornår den blev lavet."
+          }
+        },
+        "schedule_weekly": {
+          "title": "Ugentlig",
+          "data": {
+            "weekdays": "Ugedage"
+          }
+        },
+        "schedule_yearly": {
+          "title": "Årlig",
+          "data": {
+            "dates": "Datoer"
+          },
+          "data_description": {
+            "dates": "Som MM-DD, fx 10-01. 29. februar kan ikke bruges."
+          }
+        }
+      },
+      "error": {
+        "invalid": "Ikke gyldig: {error}"
+      },
+      "abort": {
+        "reconfigure_successful": "Gemt.",
+        "no_persons": "Tilføj en person først."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Indstillinger",
+        "data": {
+          "upcoming_days": "Dage frem på listerne",
+          "points_window_days": "Pointvindue (dage)",
+          "absence_hours": "Fravær efter (timer)",
+          "undo_minutes": "Fortryd-vindue (minutter)",
+          "all_list": "Opret listen \"Alle opgaver\""
+        },
+        "data_description": {
+          "upcoming_days": "Kommende opgaver vises så mange dage frem.",
+          "points_window_days": "Bruges af \"Færrest point\".",
+          "absence_hours": "En person, der har været væk hjemmefra længere, får ingen nye opgaver.",
+          "undo_minutes": "Hvor længe en afkrydsning kan fortrydes.",
+          "all_list": "En todo-liste med alles opgaver."
+        }
+      }
+    }
   }
 }

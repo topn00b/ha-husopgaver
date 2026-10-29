@@ -144,6 +144,11 @@ Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdage
 - **Tidlig afkrydsning:** Opgaven kan kun krydses af, når den er synlig på listen. Er `complete_window` sat, kun inden for vinduet. Ellers afvises det med en tydelig fejl.
 - **Én gang per forekomst:** Gentaget afkrydsning af samme forekomst er en no-op (idempotent).
 - **Fortryd:** Fjernes fluebenet inden for 10 minutter (kan konfigureres), oprettes en `undone`-post. Pointene trækkes tilbage, og forfald, tildeling og `rr_index` rulles tilbage.
+  - Kun den seneste handling på en forekomst kan fortrydes. Fortrydes en godkendelse, afventer afkrydsningen igen.
+  - Afkrydsning, afventende afkrydsning og spring over kan fortrydes. Afvisning kan ikke.
+- **Udsæt:** `snooze` flytter forekomstens status og notifikationer til det nye tidspunkt. Gentagelsens rytme ændres ikke.
+- **Notifikationer efter genstart:** Hvilke notifikationer (påmindelse, forfald, overskredet) der er sendt, gemmes per forekomst. Efter en genstart sendes kun den seneste, der er passeret, og ingen sendes to gange.
+- **Genindlæsning:** Ventende ændringer skrives, før integrationen genindlæses, fx når en opgave rettes.
 
 ## 8. Entiteter
 - **`todo.husopgaver_<person>`:**

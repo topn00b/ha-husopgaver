@@ -26,7 +26,11 @@ def credited_entries(log: Iterable[LogEntry]) -> list[LogEntry]:
 def pending_entries(log: Iterable[LogEntry]) -> list[LogEntry]:
     """Afkrydsninger, der endnu hverken er godkendt, afvist eller fortrudt."""
     entries = list(log)
-    resolved = {e.ref for e in entries if e.action in _RESOLVING}
+    undone = {e.ref for e in entries if e.action is LogAction.UNDONE}
+    # En fortrudt godkendelse eller afvisning gør posten afventende igen.
+    resolved = {
+        e.ref for e in entries if e.action in _RESOLVING and e.id not in undone
+    }
     return [
         e for e in entries if e.action is LogAction.PENDING and e.id not in resolved
     ]

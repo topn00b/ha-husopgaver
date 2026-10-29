@@ -192,3 +192,22 @@ async def test_remove(
     assert KEY in hass_storage
     await storage.async_remove()
     assert KEY not in hass_storage
+
+
+async def test_flush_writes_pending_save(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    """En genindlæsning må ikke miste ændringer, der venter på den forsinkede gemning."""
+    storage = HusopgaverStorage(hass, ENTRY_ID)
+    await storage.async_load()
+    storage.add_log_entry(_entry())
+    assert KEY not in hass_storage
+    await storage.async_flush()
+    assert len(hass_storage[KEY]["data"]["log"]) == 1
+
+    reloaded = HusopgaverStorage(hass, ENTRY_ID)
+    await reloaded.async_load()
+    assert reloaded.log == (_entry(),)
+    with patch.object(Store, "async_save") as save:
+        await reloaded.async_flush()
+    save.assert_not_called()

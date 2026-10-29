@@ -9,5 +9,61 @@
     "abort": {
       "single_instance_allowed": "Husopgaver is already set up."
     }
+  },
+  "exceptions": {
+    "unknown_chore": {
+      "message": "Unknown chore: {chore}"
+    },
+    "unknown_person": {
+      "message": "Unknown person: {person}"
+    },
+    "person_required": {
+      "message": "Choose whose {chore} it is."
+    },
+    "not_assignee": {
+      "message": "{person} is not one of the people on {chore}."
+    },
+    "too_early": {
+      "message": "{chore} can be completed from {time}."
+    },
+    "already_done": {
+      "message": "{chore} is already done."
+    },
+    "pending_approval": {
+      "message": "{chore} is waiting for approval."
+    },
+    "each_reassign": {
+      "message": "{chore} has one occurrence per person and can't be given to someone else."
+    },
+    "invalid_duration": {
+      "message": "The duration must be longer than zero."
+    },
+    "not_approver": {
+      "message": "Only a person who can approve may do this."
+    },
+    "not_pending": {
+      "message": "Log entry {log_id} is not waiting for approval."
+    },
+    "no_pending": {
+      "message": "Nothing on {chore} is waiting for approval."
+    },
+    "ambiguous_pending": {
+      "message": "Several completions of {chore} are waiting for approval. Choose one by log id."
+    },
+    "unknown_log": {
+      "message": "Unknown log entry: {log_id}"
+    },
+    "nothing_to_undo": {
+      "message": "There is nothing to undo on {chore}."
+    },
+    "not_undoable": {
+      "message": "This can't be undone."
+    },
+    "undo_not_latest": {
+      "message": "Only the latest action on {chore} can be undone."
+    },
+    "undo_expired": {
+      "message": "It is too late to undo this."
+    }
   }
 }

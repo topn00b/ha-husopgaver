@@ -23,7 +23,7 @@ async def test_setup_via_config_flow(hass: HomeAssistant) -> None:
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     assert entry.state is ConfigEntryState.LOADED
-    assert entry.runtime_data.chore_states == {}
+    assert entry.runtime_data.storage.chore_states == {}
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED

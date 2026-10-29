@@ -24,6 +24,33 @@ DEFAULT_POINTS_WINDOW_DAYS: Final = 30
 DEFAULT_ABSENCE_HOURS: Final = 24
 DEFAULT_UNDO_MINUTES: Final = 10
 
+CONF_UPCOMING_DAYS: Final = "upcoming_days"
+CONF_POINTS_WINDOW_DAYS: Final = "points_window_days"
+CONF_ABSENCE_HOURS: Final = "absence_hours"
+CONF_UNDO_MINUTES: Final = "undo_minutes"
+CONF_ALL_LIST: Final = "all_list"
+
+EVENT_DUE: Final = "husopgaver_due"
+EVENT_OVERDUE: Final = "husopgaver_overdue"
+EVENT_REMINDER: Final = "husopgaver_reminder"
+EVENT_COMPLETED: Final = "husopgaver_completed"
+EVENT_SKIPPED: Final = "husopgaver_skipped"
+EVENT_NOT_NEEDED: Final = "husopgaver_not_needed"
+EVENT_APPROVAL_REQUESTED: Final = "husopgaver_approval_requested"
+EVENT_REJECTED: Final = "husopgaver_rejected"
+
+# Knapper i notifikationer: "<præfiks><log_id>".
+ACTION_APPROVE_PREFIX: Final = "HUSOPGAVER_APPROVE_"
+ACTION_REJECT_PREFIX: Final = "HUSOPGAVER_REJECT_"
+
+
+class Notification(StrEnum):
+    """Tidsbestemte notifikationer for en forekomst, i rækkefølge."""
+
+    REMINDER = "reminder"
+    DUE = "due"
+    OVERDUE = "overdue"
+
 
 class Assignment(StrEnum):
     """Hvordan en opgave tildeles."""

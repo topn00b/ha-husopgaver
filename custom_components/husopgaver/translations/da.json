@@ -9,5 +9,61 @@
     "abort": {
       "single_instance_allowed": "Husopgaver er allerede sat op."
     }
+  },
+  "exceptions": {
+    "unknown_chore": {
+      "message": "Ukendt opgave: {chore}"
+    },
+    "unknown_person": {
+      "message": "Ukendt person: {person}"
+    },
+    "person_required": {
+      "message": "Vælg, hvis {chore} det er."
+    },
+    "not_assignee": {
+      "message": "{person} er ikke en af personerne på {chore}."
+    },
+    "too_early": {
+      "message": "{chore} kan krydses af fra {time}."
+    },
+    "already_done": {
+      "message": "{chore} er allerede lavet."
+    },
+    "pending_approval": {
+      "message": "{chore} afventer godkendelse."
+    },
+    "each_reassign": {
+      "message": "{chore} har en forekomst per person og kan ikke gives til en anden."
+    },
+    "invalid_duration": {
+      "message": "Varigheden skal være længere end nul."
+    },
+    "not_approver": {
+      "message": "Kun en person, der kan godkende, må gøre dette."
+    },
+    "not_pending": {
+      "message": "Log-posten {log_id} afventer ikke godkendelse."
+    },
+    "no_pending": {
+      "message": "Intet på {chore} afventer godkendelse."
+    },
+    "ambiguous_pending": {
+      "message": "Flere afkrydsninger af {chore} afventer godkendelse. Vælg én med log-id."
+    },
+    "unknown_log": {
+      "message": "Ukendt log-post: {log_id}"
+    },
+    "nothing_to_undo": {
+      "message": "Der er intet at fortryde på {chore}."
+    },
+    "not_undoable": {
+      "message": "Dette kan ikke fortrydes."
+    },
+    "undo_not_latest": {
+      "message": "Kun den seneste handling på {chore} kan fortrydes."
+    },
+    "undo_expired": {
+      "message": "Det er for sent at fortryde."
+    }
   }
 }

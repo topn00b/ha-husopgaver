@@ -319,6 +319,8 @@ class Occurrence:
     # Første forfaldsdato i serien (lokal dato). Bruges af interval fra forfald,
     # så en månedlig opgave den 31. vender tilbage til den 31. efter februar.
     anchor: date | None = None
+    # Notifikationer ("reminder", "due", "overdue"), der er sendt for denne forekomst.
+    notified: tuple[str, ...] = ()
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -332,6 +334,7 @@ class Occurrence:
             if condition_state
             else None,
             anchor=_date_from_str(data.get("anchor")),
+            notified=tuple(data.get("notified", ())),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -344,6 +347,7 @@ class Occurrence:
             if self.condition_state
             else None,
             "anchor": None if self.anchor is None else self.anchor.isoformat(),
+            "notified": list(self.notified),
         }
 
 
@@ -353,6 +357,9 @@ class ChoreState:
 
     occurrences: dict[str, Occurrence] = field(default_factory=dict)
     rr_index: int = 0
+    # Gentagelse og tidspunkt, som forekomsterne er beregnet ud fra.
+    # Ændres de, beregnes forfaldet forfra.
+    schedule_sig: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -362,6 +369,7 @@ class ChoreState:
                 for key, value in data.get("occurrences", {}).items()
             },
             rr_index=int(data.get("rr_index", 0)),
+            schedule_sig=data.get("schedule_sig"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -370,6 +378,7 @@ class ChoreState:
                 key: occ.to_dict() for key, occ in sorted(self.occurrences.items())
             },
             "rr_index": self.rr_index,
+            "schedule_sig": self.schedule_sig,
         }
 
     def with_occurrence(self, key: str, occurrence: Occurrence) -> ChoreState:

@@ -47,6 +47,7 @@ class HusopgaverStorage:
         self._log: list[LogEntry] = []
         self._log_ids: set[str] = set()
         self._last_saved: dict[str, Any] | None = None
+        self._save_pending = False
 
     async def async_load(self) -> None:
         data = await self._store.async_load()
@@ -101,6 +102,14 @@ class HusopgaverStorage:
         self._log_ids.add(entry.id)
         self._async_schedule_save()
 
+    async def async_flush(self) -> None:
+        """Skriv en ventende gemning med det samme, fx før genindlæsning."""
+        if self._save_pending:
+            self._save_pending = False
+            data = self._last_saved
+            assert data is not None
+            await self._store.async_save(data)
+
     async def async_remove(self) -> None:
         await self._store.async_remove()
 
@@ -119,4 +128,11 @@ class HusopgaverStorage:
         if data == self._last_saved:
             return
         self._last_saved = data
-        self._store.async_delay_save(lambda: data, SAVE_DELAY)
+        self._save_pending = True
+        self._store.async_delay_save(self._delayed_data, SAVE_DELAY)
+
+    @callback
+    def _delayed_data(self) -> dict[str, Any]:
+        self._save_pending = False
+        assert self._last_saved is not None
+        return self._last_saved

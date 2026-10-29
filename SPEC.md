@@ -1,0 +1,246 @@
+# Husopgaver: kravspecifikation
+
+Husopgaver er en lokal custom integration til Home Assistant, som en familie bruger til at koordinere husholdningsopgaver. Den bruges på en køkkentablet og i HA's companion-app. Den kører 100 % lokalt og kræver ingen ekstra container, ingen cloud og ingen eksponering udefra.
+
+- **Domæne:** `husopgaver`
+- **Sprog:** Dansk (primært) og engelsk
+- **Installation:** HACS som custom repository
+- **Mindste HA-version:** 2025.3 (kræver config subentries)
+
+Dokumentet bruger kun pladsholdere: Voksen 1, Voksen 2, Barn 1 og Barn 2.
+
+---
+
+## 1. Principper
+
+1. **Brugervenlighed først.** Afkrydsning sker med ét tryk. Oprettelse og redigering sker på én formular uden YAML.
+2. **Idempotens.** Der skrives kun til storage, og state opdateres kun, når værdierne faktisk ændrer sig.
+3. **Ingen polling.** Integrationen bruger `async_track_point_in_time` til næste relevante tidspunkt: forfald, overskridelse, påmindelse, tjek af betingelse og midnat.
+4. **Rigtige data eller ingen data.** Der bruges ingen fallback-værdier. Ukendt er `unknown` eller `unavailable`, og det vises som ukendt.
+5. **Tid.** Alt gemmes i UTC og beregnes i HA's tidszone med `homeassistant.util.dt`. Skift mellem sommer- og vintertid er dækket af tests.
+6. **Storage.** Der bruges `helpers.storage.Store` med versionsnummer og migration.
+7. **Kode.** Den er asynkron hele vejen, har type hints og bruger HA's oversættelser (`da.json` og `en.json`).
+8. **Notifikationslogik ligger hos brugeren.** Integrationen sender events, og påmindelser laves som almindelige automationer. Der findes også en simpel, valgfri notify per opgave.
+
+## 2. Datamodel
+
+### Person (config subentry)
+| Felt | Type | Note |
+|---|---|---|
+| `id` | str | Intern, stabil (uuid) |
+| `name` | str | Visningsnavn |
+| `person_entity` | `person.*` | Valgfri |
+| `notify_target` | `notify.*` | Valgfri, børn behøver ingen |
+| `can_approve` | bool | Kan godkende andres afkrydsninger (voksne) |
+| `requires_approval` | bool | Afkrydsninger skal godkendes (børn) |
+| `active` | bool | Inaktiv: tildeles intet, men historikken bevares |
+
+Hver person får en HA-bruger knyttet via `person_entity` → `user_id`. Det bruges til at kontrollere, hvem der må godkende.
+
+### Opgave (config subentry)
+| Felt | Type | Standard |
+|---|---|---|
+| `id` | str (uuid) | |
+| `name` | str | |
+| `description` | str | Valgfri |
+| `points` | int ≥ 0 | 1 |
+| `assignees` | list[person_id] | Flueben ved oprettelse. Kun disse kan få opgaven. |
+| `assignment` | `fixed` / `round_robin` / `least_points` / `each` | `least_points` |
+| `schedule` | se nedenfor | |
+| `due_time` | time | Valgfri |
+| `notify_before` | duration | Valgfri |
+| `complete_window` | duration | Valgfri. Opgaven kan først krydses af inden for dette vindue før forfald. |
+| `requires_approval` | `auto` / `always` / `never` | `auto` (følger personen) |
+| `condition` | se §5 | Valgfri |
+| `builtin_notify` | bool | false |
+
+Strategierne:
+- `fixed`: altid den første i `assignees`.
+- `round_robin`: på skift i rækkefølgen i `assignees`.
+- `least_points`: den med færrest point i det rullende vindue. Se §4.
+- `each`: hver person i `assignees` har sin egen forekomst. Bruges til børnerutiner.
+
+### Schedule
+| Type | Parametre |
+|---|---|
+| `none` | `due` (dato/tid), engangsopgave |
+| `interval` | `every` (int), `unit` (`day`/`week`/`month`), `from` (`due`/`completion`) |
+| `weekly` | `weekdays` (0–6, mandag = 0) |
+| `yearly` | `dates` (liste af `MM-DD`) |
+
+### Runtime-tilstand per opgave (og per person ved `each`)
+- `next_due` (UTC)
+- `assignee`
+- `status`
+- `snoozed_until`
+- `pending_approval` (log-id eller `null`)
+- `rr_index` (round robin)
+- `condition_state` (`active` / `not_needed` / `unknown`)
+
+### Log (kun tilføjelser, bevares altid)
+| Felt | Note |
+|---|---|
+| `id` | uuid |
+| `chore_id`, `person_id` | Bevares, også hvis opgaven eller personen slettes |
+| `timestamp` | UTC |
+| `points` | Pointværdi på udførelsestidspunktet |
+| `action` | `completed` / `skipped` / `not_needed` / `pending` / `approved` / `rejected` / `undone` / `settled` |
+| `ref` | Henvisning til den log-post, som `approved`, `rejected` eller `undone` gælder |
+| `by_user` | HA-bruger, der udførte handlingen (til godkendelse og revision) |
+
+En `pending`-post giver ingen point. Først en `approved`-post med `ref` til den udløser pointene.
+
+### Storage
+- **Store-nøgle:** `husopgaver.<entry_id>`, version 1, med `async_migrate_func`.
+- **Opdeling:** Konfigurationen (personer og opgaver) ligger i config subentries. Runtime-tilstand og log ligger i Store.
+- **Gemning:** `async_delay_save` bruges med en kort forsinkelse, og der gemmes kun, når noget er ændret.
+
+## 3. Status og tidsregler
+- `upcoming`: før forfaldsdagen.
+- `due`: fra kl. 00:00 på forfaldsdagen. Er `due_time` sat, fra `due_time`.
+- `overdue`: fra kl. 00:00 dagen efter forfaldsdagen. Er `due_time` sat, fra `due_time` + 1 time.
+- `pending_approval`: krydset af, men afventer godkendelse fra en voksen.
+- **Ingen ophobning:** En overskredet, tilbagevendende opgave er én forekomst, uanset hvor mange intervaller der er gået.
+
+### Næste forfald
+- `interval` / `from: due`: `next = previous_due + every`. Datoer, der er sprunget over, hoppes frem, indtil `next > now`.
+- `interval` / `from: completion`: `next = completed_at (lokal dato) + every`. `due_time` beholdes.
+- `month`: Dagen sættes til sidste dag i måneden, når den ikke findes. Udgangspunktet er altid *den oprindelige dag*: 31/1 → 28/2 → 31/3.
+- `weekly`: næste ugedag på listen efter forfaldsdagen.
+- `yearly`: næste dato på listen efter forfaldsdagen. Udføres opgaven før tid, fx 25/9, tæller det for den 1/10, og næste forfald bliver den 1/10 året efter.
+- Alle beregninger foregår på **lokale datoer** og konverteres til UTC til sidst. Et tidspunkt som 02:30 på dagen for skift til sommertid, der ikke findes, rykkes frem. Ved skift til vintertid bruges den første forekomst af tidspunktet.
+
+## 4. Tildeling
+Tildelingen beregnes, når en opgave oprettes, og efter hver `completed`, `skipped` eller `not_needed`. Kandidaterne er de personer i `assignees`, der er aktive og ikke fraværende.
+
+- **Fravær:** Hvis `person_entity` har været `not_home` længere end en konfigurerbar tærskel (standard 24 timer), er personen fraværende. Hvis HA ikke kender personens state, regnes personen som tilgængelig, og det logges.
+- **`least_points`:** Opgaven går til den med færrest godkendte point i det rullende vindue (standard 30 dage, kan konfigureres). Står det lige, går den til den, der har udført *netop denne opgave* længst tid siden, eller aldrig. Står det stadig lige, afgør rækkefølgen i `assignees`.
+- **`round_robin`:** Turen går til næste kandidat efter `rr_index`. Fraværende springes over, og `rr_index` rykker videre.
+- **`fixed`:** første kandidat. Er den person fraværende, beholdes tildelingen (fast er fast).
+- **Afkrydsning af en anden:** Krydser en person af, som ikke var tildelt, går pointene til den, der krydsede af. Den, der løfter mere, belønnes mere.
+
+## 5. Betingelser (dynamiske opgaver)
+Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdagen.
+- **Kalender-nøgleord:** `calendar` og `keywords`. Har kalenderen en begivenhed den dag, der indeholder et af nøgleordene, er opgaven *ikke nødvendig*. Begivenhederne hentes med `calendar.get_events` på tidspunktet for tjekket, ikke løbende.
+- **Entitet:** `entity` og `active_state` (standard `on`). Opgaven er kun nødvendig, når entiteten har den state.
+- **Ikke nødvendig:** Opgaven fjernes fra listerne og logges som `not_needed` med 0 point. Rotationen rykker ikke, og næste forfald beregnes.
+- **Ukendt:** Er kalenderen eller entiteten `unavailable`/`unknown`, bliver opgaven stående med `condition_state: unknown`. Den skjules ikke stille.
+
+## 6. Godkendelse
+1. En person med `requires_approval`, eller en opgave med `always`, krydser af. Der oprettes en `pending`-post, og status bliver `pending_approval`. Opgaven bliver stående på listen med markeringen "Afventer godkendelse".
+2. Eventet `husopgaver_approval_requested` sendes. Med `builtin_notify` får personer med `can_approve` en notifikation med knapperne **Godkend** og **Afvis**.
+3. **Godkend:** en `approved`-post. Pointene tildeles, næste forfald og næste tildeling beregnes, og `husopgaver_completed` sendes.
+4. **Afvis:** en `rejected`-post. Ingen point, opgaven vender tilbage som forfalden hos samme person, og `husopgaver_rejected` sendes.
+5. **Håndhævelse:** `approve` og `reject` afvises med `ServiceValidationError`, hvis `context.user_id` ikke tilhører en person med `can_approve`. Notifikationsknapper bruger den HA-bruger, som telefonen er logget ind som.
+6. **Den fælles tabletbruger** (fx "Køkken") er ikke knyttet til en person med `can_approve` og kan derfor ikke godkende.
+
+## 7. Spærringer og fortryd
+- **Tidlig afkrydsning:** Opgaven kan kun krydses af, når den er synlig på listen. Er `complete_window` sat, kun inden for vinduet. Ellers afvises det med en tydelig fejl.
+- **Én gang per forekomst:** Gentaget afkrydsning af samme forekomst er en no-op (idempotent).
+- **Fortryd:** Fjernes fluebenet inden for 10 minutter (kan konfigureres), oprettes en `undone`-post. Pointene trækkes tilbage, og forfald, tildeling og `rr_index` rulles tilbage.
+
+## 8. Entiteter
+- **`todo.husopgaver_<person>`:**
+  - Personens opgaver, der er `due`, `overdue`, `pending_approval` eller `upcoming` inden for vinduet (standard 2 dage).
+  - Afkrydsning krediteres *listens ejer*.
+  - Et nyt punkt i listen bliver til en engangsopgave hos ejeren med 1 point.
+  - Redigering af et punkt opdaterer navn, beskrivelse og forfald.
+  - Beskrivelsen viser point, status og eventuelt "Afventer godkendelse".
+- **`todo.husopgaver_alle`** (valgfri): Afkrydsning krediteres den tildelte.
+- **`todo.husopgaver_godkendelse`:** Afventende godkendelser. Afkrydsning godkender og kræver en bruger med `can_approve`.
+- **`sensor.husopgaver_<person>_point`:**
+  - State: godkendte point i indeværende uge (mandag til søndag, lokal tid).
+  - Attributter: `month`, `all_time`, `since_settlement`, `pending`, `completed_count`, `overdue_count`.
+- **`calendar.husopgaver`:** Forekomster af opgaverne inden for den forespurgte periode. Tilbagevendende opgaver udvides, og opgaver, der er ikke nødvendige, vises ikke.
+
+## 9. Services
+| Service | Felter |
+|---|---|
+| `husopgaver.complete` | `chore`, `person` (valgfri, standard er den tildelte) |
+| `husopgaver.skip` | `chore`, `person` (kun ved `each`) |
+| `husopgaver.reassign` | `chore`, `person` |
+| `husopgaver.snooze` | `chore`, `duration` |
+| `husopgaver.approve` | `log_id` eller `chore` |
+| `husopgaver.reject` | `log_id` eller `chore` |
+| `husopgaver.undo` | `log_id` eller `chore` |
+| `husopgaver.settle` | `person`: nulstiller `since_settlement`, logger `settled`, sletter intet |
+| `husopgaver.create_chore` / `update_chore` / `delete_chore` | Opgavens felter |
+
+`chore` kan angives som opgavens id, todo-punkt eller navn.
+
+Fejl giver `ServiceValidationError` med oversatte beskeder.
+
+## 10. Events
+`husopgaver_due`, `husopgaver_overdue`, `husopgaver_reminder`, `husopgaver_completed`, `husopgaver_skipped`, `husopgaver_not_needed`, `husopgaver_approval_requested`, `husopgaver_rejected`
+
+Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `notify_target`, `points`, `due` (ISO). Når der er en relevant log-post, kommer også `log_id` med.
+
+## 11. Konfiguration (kun via brugerfladen)
+- **Config flow:** Opretter integrationen. Ingen spørgsmål ud over navnet.
+- **Options:**
+  - Vindue for "kommende" (2 dage)
+  - Pointvindue for `least_points` (30 dage)
+  - Fraværstærskel (24 timer)
+  - Fortryd-vindue (10 minutter)
+  - Om listen "Alle opgaver" skal oprettes
+- **Subentry "Person":** Knappen "Tilføj person" og en formular. "Ret" og "Slet" findes på hver person.
+- **Subentry "Opgave":** Knappen "Tilføj opgave" og *én* formular. Felterne er navn, beskrivelse og point, flueben for personerne, strategi, gentagelse og felterne for den valgte gentagelse, tidspunkt, påmindelse og avanceret (betingelse, godkendelse, vindue).
+  - Vælges der en anden gentagelsestype, vises næste trin med de felter, der hører til.
+- **Sletning:** Når en person eller opgave slettes, bevares loggen.
+
+## 12. Tests (`pytest-homeassistant-custom-component`, kører i GitHub Actions)
+- **Næste forfald for alle typer:**
+  - `interval` fra forfald og fra udførelse, dag/uge/måned og månedsslut.
+  - `weekly`.
+  - `yearly`, inklusive udført før tid og flere datoer.
+  - Engangsopgave.
+- **Sommertid:**
+  - Forfald og interval hen over sidste søndag i marts og sidste søndag i oktober.
+  - Et tidspunkt, der ikke findes, eller som forekommer to gange.
+  - Midnat og ugegrænse ved skiftet.
+- **Rotation:**
+  - `round_robin`, også med fravær.
+  - `least_points`, med uafgjort i begge led af tiebreak.
+  - `each`.
+- **Point:** uge, måned, all-time og siden udbetaling. Afventende point tælles ikke med.
+- **Todo:**
+  - Afkrydsning krediteres listens ejer.
+  - Afkrydsning i "Alle opgaver" krediteres den tildelte.
+  - Fortryd.
+  - Nyt punkt bliver en engangsopgave.
+- **Godkendelse:** godkend, afvis og afvisning af en uautoriseret bruger.
+- **Betingelser:** kalender-nøgleord, entitet og ukendt.
+- **Spærringer:** tidlig afkrydsning og dobbelt afkrydsning.
+- **Storage:** gemmer kun ved ændring og migration.
+- **Config flow og subentries.**
+- **CI:** `hassfest` og HACS-validering.
+
+## 13. Levering
+- Struktur: `custom_components/husopgaver/`, `hacs.json`, `README.md`, `examples/` og `tests/`.
+- README med opsætning, services, events og eksempler.
+- **`examples/dashboard_koekken.yaml`:** Lovelace med 4 mellemrums indrykning og kun indbyggede kort.
+  - Kalenderkort med `calendar.familie` og `calendar.husopgaver`.
+  - Et todo-kort per person.
+  - Pointtavle.
+  - Kort med afventende godkendelser.
+- **`examples/automation_paamindelse.yaml`:**
+  - Trigger: `husopgaver_due`.
+  - Sender til `notify_target` fra eventdata.
+  - Ingen alias-variabler, entiteter bruges direkte.
+- **`examples/automation_godkendelse.yaml`:** En actionable notification til de voksne.
+- **Eksempel på en betingelse for aftensmad** baseret på kalenderen.
+
+## 14. Byggetrin
+1. Datamodel og storage.
+2. Schedule og tildeling med tests, inklusive sommertid.
+3. Koordinator med timere, events, godkendelse og fortryd.
+4. Entiteter: todo, sensor og calendar.
+5. Services.
+6. Config flow, options og subentries.
+7. Betingelser.
+8. README, dashboard og automationseksempler.
+
+## 15. Uden for v1 (designet til at kunne udvides)
+- **Belønninger:** et katalog, hvor point kan byttes til noget, som udvidelse af `settle`.
+- **NFC:** `tag_scanned` → `complete`, via en tag-mapping per opgave.
+- **Underopgaver:** `parent_id` på opgaven, nulstilles ved gentagelse.

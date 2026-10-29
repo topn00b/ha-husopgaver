@@ -64,6 +64,33 @@
     },
     "undo_expired": {
       "message": "It is too late to undo this."
+    },
+    "item_gone": {
+      "message": "This chore has changed in the meantime. Refresh the list and try again."
+    },
+    "cannot_delete": {
+      "message": "Only one-off chores can be deleted from the list. Recurring chores are deleted on the integration page."
+    },
+    "invalid_chore": {
+      "message": "The chore is not valid: {error}"
+    }
+  },
+  "entity": {
+    "todo": {
+      "person": {
+        "name": "{person}"
+      },
+      "all": {
+        "name": "All chores"
+      },
+      "approvals": {
+        "name": "Approvals"
+      }
+    },
+    "sensor": {
+      "points": {
+        "name": "{person} points"
+      }
     }
   }
 }

@@ -8,14 +8,15 @@ til det næste relevante tidspunkt. Der polles aldrig.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import replace
-from datetime import datetime, timedelta
+from dataclasses import dataclass, replace
+from datetime import datetime, time, timedelta
 import json
 import logging
+from types import MappingProxyType
 from typing import Any
 import uuid
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, State, callback
 from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers.event import async_track_point_in_utc_time
@@ -30,6 +31,7 @@ from .const import (
     CONF_UNDO_MINUTES,
     CONF_UPCOMING_DAYS,
     DEFAULT_ABSENCE_HOURS,
+    DEFAULT_POINTS,
     DEFAULT_POINTS_WINDOW_DAYS,
     DEFAULT_UNDO_MINUTES,
     DEFAULT_UPCOMING_DAYS,
@@ -47,13 +49,16 @@ from .const import (
     ApprovalMode,
     Assignment,
     ChoreStatus,
+    ConditionState,
     LogAction,
     Notification,
+    ScheduleKind,
 )
 from .models import Chore, ChoreState, LogEntry, Occurrence, Person
 from .points import credited_entries, pending_entries
 from .schedule import due_window, first_due, local_date, local_datetime, next_due, status
 from .storage import HusopgaverStorage
+from .texts import text
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,28 +76,7 @@ _UNDOABLE = frozenset(
 )
 _STATE_CHANGING = _UNDOABLE | {LogAction.REJECTED, LogAction.NOT_NEEDED}
 
-# Notifikationstekster. Integrationens oversættelser dækker kun brugerfladen.
-_TEXTS: dict[str, dict[str, str]] = {
-    "da": {
-        Notification.REMINDER: "{chore} skal snart laves",
-        Notification.DUE: "{chore} skal laves nu",
-        Notification.OVERDUE: "{chore} er overskredet",
-        "approval": "{person} har lavet {chore}. Godkend?",
-        "approve": "Godkend",
-        "reject": "Afvis",
-    },
-    "en": {
-        Notification.REMINDER: "{chore} is coming up",
-        Notification.DUE: "{chore} is due now",
-        Notification.OVERDUE: "{chore} is overdue",
-        "approval": "{person} did {chore}. Approve?",
-        "approve": "Approve",
-        "reject": "Reject",
-    },
-}
-
-
-def _error(key: str, **placeholders: Any) -> ServiceValidationError:
+def validation_error(key: str, **placeholders: Any) -> ServiceValidationError:
     return ServiceValidationError(
         translation_domain=DOMAIN,
         translation_key=key,
@@ -108,6 +92,27 @@ def _schedule_signature(chore: Chore) -> str:
         },
         sort_keys=True,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class OccurrenceView:
+    """En aktuel forekomst med beregnet forfald og status, til entiteterne."""
+
+    chore: Chore
+    key: str
+    occurrence: Occurrence
+    due: datetime
+    status: ChoreStatus | None
+
+    @property
+    def person_id(self) -> str | None:
+        return self.occurrence.assignee
+
+    @property
+    def uid(self) -> str:
+        """Id for netop denne forekomst. Skifter, når forekomsten rykker videre."""
+        assert self.occurrence.next_due is not None
+        return f"{self.chore.id}|{self.key}|{self.occurrence.next_due.isoformat()}"
 
 
 def effective_due(occurrence: Occurrence) -> datetime | None:
@@ -292,7 +297,7 @@ class HusopgaverCoordinator:
     def _chore(self, chore_id: str) -> Chore:
         chore = self.chores.get(chore_id)
         if chore is None:
-            raise _error("unknown_chore", chore=chore_id)
+            raise validation_error("unknown_chore", chore=chore_id)
         return chore
 
     def _occurrence(
@@ -300,13 +305,13 @@ class HusopgaverCoordinator:
     ) -> tuple[str, Occurrence]:
         if chore.assignment is Assignment.EACH:
             if person_id is None:
-                raise _error("person_required", chore=chore.name)
+                raise validation_error("person_required", chore=chore.name)
             key = person_id
         else:
             key = SHARED_OCCURRENCE
         occ = self.storage.chore_states[chore.id].occurrences.get(key)
         if occ is None:
-            raise _error("not_assignee", chore=chore.name, person=self._name(key))
+            raise validation_error("not_assignee", chore=chore.name, person=self._name(key))
         return key, occ
 
     def _name(self, person_id: str | None) -> str:
@@ -317,6 +322,92 @@ class HusopgaverCoordinator:
         return status(
             chore, effective_due(occurrence), now, occurrence.pending_log_id is not None
         )
+
+    def occurrences(self, now: datetime) -> list[OccurrenceView]:
+        """Alle aktuelle forekomster. Udførte engangsopgaver og ikke nødvendige er udeladt."""
+        views: list[OccurrenceView] = []
+        for chore in self.chores.values():
+            state = self.storage.chore_states.get(chore.id)
+            if state is None:
+                continue
+            for key, occ in state.occurrences.items():
+                due = effective_due(occ)
+                if due is None or occ.condition_state is ConditionState.NOT_NEEDED:
+                    continue
+                views.append(
+                    OccurrenceView(chore, key, occ, due, self.status(chore, occ, now))
+                )
+        return views
+
+    @callback
+    def set_due(self, chore_id: str, key: str, due: datetime) -> None:
+        """Flyt én forekomst, fx fra en todo-liste. Gentagelsens rytme ændres ikke."""
+        chore = self._chore(chore_id)
+        occ = self.storage.chore_states[chore.id].occurrences.get(key)
+        if occ is None or occ.next_due is None:
+            raise validation_error("item_gone")
+        self._set_occurrence(
+            chore, key, replace(occ, next_due=due, snoozed_until=None, notified=())
+        )
+        self._refresh(dt_util.utcnow())
+
+    @callback
+    def create_one_off(
+        self,
+        person_id: str,
+        name: str,
+        description: str | None,
+        due: datetime,
+        due_time: time | None,
+    ) -> None:
+        """Opret en engangsopgave hos personen med 1 point. Integrationen genindlæses."""
+        data: dict[str, Any] = {
+            "name": name,
+            "description": description,
+            "points": DEFAULT_POINTS,
+            "assignees": [person_id],
+            "assignment": Assignment.FIXED.value,
+            "schedule": {"kind": ScheduleKind.NONE.value, "due": due.isoformat()},
+            "due_time": None if due_time is None else due_time.isoformat(),
+        }
+        try:
+            Chore.from_dict("ny", data)
+        except ValueError as err:
+            raise validation_error("invalid_chore", error=err) from err
+        self.hass.config_entries.async_add_subentry(
+            self.entry,
+            ConfigSubentry(
+                data=MappingProxyType(data),
+                subentry_type=SUBENTRY_CHORE,
+                title=data["name"],
+                unique_id=None,
+            ),
+        )
+
+    @callback
+    def update_chore_text(
+        self, chore_id: str, name: str, description: str | None
+    ) -> None:
+        """Ret navn og beskrivelse. Integrationen genindlæses."""
+        chore = self._chore(chore_id)
+        name = name.strip()
+        if not name:
+            raise validation_error("invalid_chore", error="name")
+        if name == chore.name and description == chore.description:
+            return
+        subentry = self.entry.subentries[chore_id]
+        self.hass.config_entries.async_update_subentry(
+            self.entry,
+            subentry,
+            data={**subentry.data, "name": name, "description": description},
+            title=name,
+        )
+
+    @callback
+    def delete_chore(self, chore_id: str) -> None:
+        """Slet en opgave. Loggen bevares. Integrationen genindlæses."""
+        self._chore(chore_id)
+        self.hass.config_entries.async_remove_subentry(self.entry, chore_id)
 
     # Handlinger
 
@@ -344,7 +435,7 @@ class HusopgaverCoordinator:
             return None
         doer = person_id or occ.assignee
         if doer is None or doer not in self.persons:
-            raise _error("unknown_person", person=doer)
+            raise validation_error("unknown_person", person=doer)
         self._check_window(chore, due, now)
 
         person = self.persons[doer]
@@ -373,15 +464,19 @@ class HusopgaverCoordinator:
         self._refresh(now)
         return entry
 
+    def visible_from(self, chore: Chore, due: datetime) -> datetime:
+        """Hvornår forekomsten kommer på listerne (kommende inden for vinduet)."""
+        due_from, _ = due_window(chore, due)
+        return local_datetime(local_date(due_from) - self.upcoming_window)
+
     def _check_window(self, chore: Chore, due: datetime, now: datetime) -> None:
         """Afvis afkrydsning, før forekomsten er synlig eller inden for vinduet."""
-        due_from, _ = due_window(chore, due)
         if chore.complete_window is not None:
-            opens = due_from - chore.complete_window
+            opens = due_window(chore, due)[0] - chore.complete_window
         else:
-            opens = local_datetime(local_date(due_from) - self.upcoming_window)
+            opens = self.visible_from(chore, due)
         if now < opens:
-            raise _error(
+            raise validation_error(
                 "too_early",
                 chore=chore.name,
                 time=dt_util.as_local(opens).strftime("%d-%m-%Y %H:%M"),
@@ -396,12 +491,12 @@ class HusopgaverCoordinator:
         key, occ = self._occurrence(chore, person_id)
         due = effective_due(occ)
         if due is None:
-            raise _error("already_done", chore=chore.name)
+            raise validation_error("already_done", chore=chore.name)
         if occ.pending_log_id is not None:
-            raise _error("pending_approval", chore=chore.name)
+            raise validation_error("pending_approval", chore=chore.name)
         doer = occ.assignee
         if doer is None:
-            raise _error("unknown_person", person=None)
+            raise validation_error("unknown_person", person=None)
         entry = LogEntry(
             id=uuid.uuid4().hex,
             person_id=doer,
@@ -421,9 +516,9 @@ class HusopgaverCoordinator:
     def reassign(self, chore_id: str, person_id: str) -> None:
         chore = self._chore(chore_id)
         if chore.assignment is Assignment.EACH:
-            raise _error("each_reassign", chore=chore.name)
+            raise validation_error("each_reassign", chore=chore.name)
         if person_id not in each_assignees(chore, self.persons):
-            raise _error("not_assignee", chore=chore.name, person=self._name(person_id))
+            raise validation_error("not_assignee", chore=chore.name, person=self._name(person_id))
         key, occ = self._occurrence(chore, None)
         self._set_occurrence(chore, key, replace(occ, assignee=person_id))
         self._refresh(dt_util.utcnow())
@@ -436,9 +531,9 @@ class HusopgaverCoordinator:
         chore = self._chore(chore_id)
         key, occ = self._occurrence(chore, person_id)
         if occ.next_due is None:
-            raise _error("already_done", chore=chore.name)
+            raise validation_error("already_done", chore=chore.name)
         if duration <= timedelta(0):
-            raise _error("invalid_duration")
+            raise validation_error("invalid_duration")
         # Notifikationerne sendes igen på det nye tidspunkt.
         self._set_occurrence(
             chore, key, replace(occ, snoozed_until=now + duration, notified=())
@@ -531,7 +626,7 @@ class HusopgaverCoordinator:
         if log_id is not None:
             target = self.storage.get_log_entry(log_id)
             if target is None:
-                raise _error("unknown_log", log_id=log_id)
+                raise validation_error("unknown_log", log_id=log_id)
         else:
             chore = self._chore(chore_id or "")
             candidates = [
@@ -542,11 +637,11 @@ class HusopgaverCoordinator:
                 and e.id not in undone
             ]
             if not candidates:
-                raise _error("nothing_to_undo", chore=chore.name)
+                raise validation_error("nothing_to_undo", chore=chore.name)
             target = candidates[-1]
 
         if target.action not in _UNDOABLE or target.id in undone:
-            raise _error("not_undoable")
+            raise validation_error("not_undoable")
         later = [
             e
             for e in log[log.index(target) + 1 :]
@@ -556,9 +651,9 @@ class HusopgaverCoordinator:
             and e.id not in undone
         ]
         if later:
-            raise _error("undo_not_latest", chore=self._chore_name(target.chore_id))
+            raise validation_error("undo_not_latest", chore=self._chore_name(target.chore_id))
         if now - target.timestamp > self.undo_window:
-            raise _error("undo_expired")
+            raise validation_error("undo_expired")
 
         entry = LogEntry(
             id=uuid.uuid4().hex,
@@ -587,7 +682,7 @@ class HusopgaverCoordinator:
     def settle(self, person_id: str, user_id: str | None = None) -> LogEntry:
         """Udbetaling: nulstil "siden udbetaling". Der slettes intet."""
         if person_id not in self.persons:
-            raise _error("unknown_person", person=person_id)
+            raise validation_error("unknown_person", person=person_id)
         entry = LogEntry(
             id=uuid.uuid4().hex,
             person_id=person_id,
@@ -608,7 +703,7 @@ class HusopgaverCoordinator:
     def _check_approver(self, user_id: str | None) -> Person:
         person = self.person_for_user(user_id)
         if person is None or not person.can_approve:
-            raise _error("not_approver")
+            raise validation_error("not_approver")
         return person
 
     def _pending(self, log_id: str | None, chore_id: str | None) -> LogEntry:
@@ -616,14 +711,14 @@ class HusopgaverCoordinator:
         if log_id is not None:
             match = [e for e in pending if e.id == log_id]
             if not match:
-                raise _error("not_pending", log_id=log_id)
+                raise validation_error("not_pending", log_id=log_id)
             return match[0]
         chore = self._chore(chore_id or "")
         match = [e for e in pending if e.chore_id == chore.id]
         if not match:
-            raise _error("no_pending", chore=chore.name)
+            raise validation_error("no_pending", chore=chore.name)
         if len(match) > 1:
-            raise _error("ambiguous_pending", chore=chore.name)
+            raise validation_error("ambiguous_pending", chore=chore.name)
         return match[0]
 
     def _pending_occurrence(
@@ -786,14 +881,10 @@ class HusopgaverCoordinator:
                 person.notify_target,
                 {
                     "title": chore.name,
-                    "message": self._text(kind).format(chore=chore.name),
+                    "message": text(self.hass, kind, chore=chore.name),
                     "data": {"tag": f"husopgaver_{chore.id}"},
                 },
             )
-
-    def _text(self, key: str) -> str:
-        language = self.hass.config.language.split("-")[0]
-        return _TEXTS.get(language, _TEXTS["en"])[key]
 
     @callback
     def _send(self, notify_target: str, data: dict[str, Any]) -> None:
@@ -821,19 +912,19 @@ class HusopgaverCoordinator:
                 approver.notify_target,
                 {
                     "title": chore.name,
-                    "message": self._text("approval").format(
-                        person=person.name, chore=chore.name
+                    "message": text(
+                        self.hass, "approval", person=person.name, chore=chore.name
                     ),
                     "data": {
                         "tag": f"husopgaver_{entry.id}",
                         "actions": [
                             {
                                 "action": f"{ACTION_APPROVE_PREFIX}{entry.id}",
-                                "title": self._text("approve"),
+                                "title": text(self.hass, "approve"),
                             },
                             {
                                 "action": f"{ACTION_REJECT_PREFIX}{entry.id}",
-                                "title": self._text("reject"),
+                                "title": text(self.hass, "reject"),
                             },
                         ],
                     },

@@ -157,12 +157,19 @@ Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdage
   - Et nyt punkt i listen bliver til en engangsopgave hos ejeren med 1 point.
   - Redigering af et punkt opdaterer navn, beskrivelse og forfald.
   - Beskrivelsen viser point, status og eventuelt "Afventer godkendelse".
+  - **Dagens afkrydsninger** står som udført på listen, indtil midnat. De beholder forekomstens id, så et ekstra tryk ikke gør noget. Fjernes fluebenet, fortrydes afkrydsningen (inden for fortryd-vinduet). En afkrydsning, der afventer godkendelse, står også som udført med "Afventer godkendelse".
+  - **Sletning** fra listen virker kun for engangsopgaver. Tilbagevendende opgaver slettes på integrationens side.
+  - Ændres navn eller beskrivelse, genindlæses integrationen. Ændres forfaldet, flyttes kun den forekomst.
 - **`todo.husopgaver_alle`** (valgfri): Afkrydsning krediteres den tildelte.
 - **`todo.husopgaver_godkendelse`:** Afventende godkendelser. Afkrydsning godkender og kræver en bruger med `can_approve`.
 - **`sensor.husopgaver_<person>_point`:**
   - State: godkendte point i indeværende uge (mandag til søndag, lokal tid).
   - Attributter: `month`, `all_time`, `since_settlement`, `pending`, `completed_count`, `overdue_count`.
+  - `since_settlement` regnes efter rækkefølgen i loggen: alt før den seneste udbetaling er afregnet.
 - **`calendar.husopgaver`:** Forekomster af opgaverne inden for den forespurgte periode. Tilbagevendende opgaver udvides, og opgaver, der er ikke nødvendige, vises ikke.
+  - Med tidspunkt varer en begivenhed 1 time (frem til "overskredet"). Uden tidspunkt er den heldags.
+  - Kun den aktuelle forekomst viser personen. Ved rotation kendes de følgende personer ikke, så de vises uden navn. Ved `fixed` og `each` vises personen altid.
+- **Entitets-id'er** er faste uanset HA's sprog: `todo.husopgaver_<person>`, `todo.husopgaver_alle`, `todo.husopgaver_godkendelse`, `sensor.husopgaver_<person>_point` og `calendar.husopgaver`.
 
 ## 9. Services
 | Service | Felter |

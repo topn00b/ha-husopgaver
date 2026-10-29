@@ -10,6 +10,7 @@ from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
+    MockUser,
     async_capture_events,
     async_fire_time_changed,
     async_mock_service,
@@ -80,6 +81,10 @@ def _subentries(persons, chores) -> list[ConfigSubentryDataWithId]:
 @pytest.fixture
 async def setup(hass: HomeAssistant, copenhagen, freezer: FrozenDateTimeFactory):
     freezer.move_to(START)
+    hass.config.language = "da"
+    for user_id in USERS.values():
+        # Almindelig bruger som i gruppen "Users": adgang til alle entiteter.
+        MockUser(id=user_id).add_to_hass(hass).mock_policy({"entities": True})
     for pid, user in USERS.items():
         if pid in PERSONS:
             hass.states.async_set(
@@ -485,7 +490,7 @@ class TestTimers:
         await setup({"c1": _chore(due_time="18:00", builtin_notify=True)})
         await _tick(hass, freezer, _local(6, 10, 18))
         assert len(calls) == 1
-        assert calls[0].data["message"] == "Tøm opvaskemaskinen is due now"
+        assert calls[0].data["message"] == "Tøm opvaskemaskinen skal laves nu"
 
     async def test_listeners_called_at_midnight(self, hass, setup, freezer) -> None:
         coordinator = await setup({"c1": _chore()})

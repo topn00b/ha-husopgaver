@@ -64,6 +64,33 @@
     },
     "undo_expired": {
       "message": "Det er for sent at fortryde."
+    },
+    "item_gone": {
+      "message": "Opgaven er ændret i mellemtiden. Opdatér listen, og prøv igen."
+    },
+    "cannot_delete": {
+      "message": "Kun engangsopgaver kan slettes fra listen. Tilbagevendende opgaver slettes på integrationens side."
+    },
+    "invalid_chore": {
+      "message": "Opgaven er ikke gyldig: {error}"
+    }
+  },
+  "entity": {
+    "todo": {
+      "person": {
+        "name": "{person}"
+      },
+      "all": {
+        "name": "Alle opgaver"
+      },
+      "approvals": {
+        "name": "Godkendelser"
+      }
+    },
+    "sensor": {
+      "points": {
+        "name": "{person} point"
+      }
     }
   }
 }

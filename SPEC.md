@@ -103,6 +103,8 @@ En `pending`-post giver ingen point. Først en `approved`-post med `ref` til den
 - **Ingen ophobning:** En overskredet, tilbagevendende opgave er én forekomst, uanset hvor mange intervaller der er gået.
 
 ### Næste forfald
+- **Første forfald** for en ny opgave: den første dag fra i dag, der passer til gentagelsen. Er `due_time` allerede passeret i dag, bliver det næste passende dag.
+- `interval` / `from: due` regnes fra seriens startdato (`anchor`), så en månedlig opgave den 31. vender tilbage til den 31.
 - `interval` / `from: due`: `next = previous_due + every`. Datoer, der er sprunget over, hoppes frem, indtil `next > now`.
 - `interval` / `from: completion`: `next = completed_at (lokal dato) + every`. `due_time` beholdes.
 - `month`: Dagen sættes til sidste dag i måneden, når den ikke findes. Udgangspunktet er altid *den oprindelige dag*: 31/1 → 28/2 → 31/3.
@@ -113,7 +115,8 @@ En `pending`-post giver ingen point. Først en `approved`-post med `ref` til den
 ## 4. Tildeling
 Tildelingen beregnes, når en opgave oprettes, og efter hver `completed`, `skipped` eller `not_needed`. Kandidaterne er de personer i `assignees`, der er aktive og ikke fraværende.
 
-- **Fravær:** Hvis `person_entity` har været `not_home` længere end en konfigurerbar tærskel (standard 24 timer), er personen fraværende. Hvis HA ikke kender personens state, regnes personen som tilgængelig, og det logges.
+- **Fravær:** Hvis `person_entity` har været væk hjemmefra (enhver state end `home`, også en zone som fx arbejde) længere end en konfigurerbar tærskel (standard 24 timer), er personen fraværende. Hvis HA ikke kender personens state, regnes personen som tilgængelig, og det logges.
+- **Alle fraværende:** Ved `round_robin` og `least_points` ses der bort fra fravær, så opgaven stadig får en ejer. Er ingen af personerne aktive, har opgaven ingen ejer.
 - **`least_points`:** Opgaven går til den med færrest godkendte point i det rullende vindue (standard 30 dage, kan konfigureres). Står det lige, går den til den, der har udført *netop denne opgave* længst tid siden, eller aldrig. Står det stadig lige, afgør rækkefølgen i `assignees`.
 - **`round_robin`:** Turen går til næste kandidat efter `rr_index`. Fraværende springes over, og `rr_index` rykker videre.
 - **`fixed`:** første kandidat. Er den person fraværende, beholdes tildelingen (fast er fast).

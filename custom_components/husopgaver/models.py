@@ -10,7 +10,7 @@ der gættes aldrig på en værdi.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Self
 
 from homeassistant.util import dt as dt_util
@@ -51,6 +51,15 @@ def _time_from_str(value: str | None) -> time | None:
     parsed = dt_util.parse_time(value)
     if parsed is None:
         raise ValueError(f"Ugyldigt klokkeslæt: {value!r}")
+    return parsed
+
+
+def _date_from_str(value: str | None) -> date | None:
+    if value is None:
+        return None
+    parsed = dt_util.parse_date(value)
+    if parsed is None:
+        raise ValueError(f"Ugyldig dato: {value!r}")
     return parsed
 
 
@@ -307,6 +316,9 @@ class Occurrence:
     snoozed_until: datetime | None = None
     pending_log_id: str | None = None
     condition_state: ConditionState | None = None
+    # Første forfaldsdato i serien (lokal dato). Bruges af interval fra forfald,
+    # så en månedlig opgave den 31. vender tilbage til den 31. efter februar.
+    anchor: date | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -319,6 +331,7 @@ class Occurrence:
             condition_state=ConditionState(condition_state)
             if condition_state
             else None,
+            anchor=_date_from_str(data.get("anchor")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -330,6 +343,7 @@ class Occurrence:
             "condition_state": self.condition_state.value
             if self.condition_state
             else None,
+            "anchor": None if self.anchor is None else self.anchor.isoformat(),
         }
 
 

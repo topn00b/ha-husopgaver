@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 
@@ -239,12 +239,17 @@ class TestRuntime:
                     assignee="barn_1",
                     pending_log_id="log1",
                     condition_state=ConditionState.ACTIVE,
+                    anchor=date(2026, 1, 31),
                 ),
                 "barn_2": Occurrence(next_due=None, assignee=None),
             },
             rr_index=3,
         )
         assert ChoreState.from_dict(state.to_dict()) == state
+
+    def test_invalid_anchor_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            Occurrence.from_dict({"next_due": None, "anchor": "2026-02-30"})
 
     def test_with_occurrence_does_not_mutate(self) -> None:
         state = ChoreState()

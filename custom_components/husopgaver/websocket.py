@@ -27,6 +27,7 @@ from .const import (
     LogAction,
 )
 from .coordinator import HusopgaverCoordinator, OccurrenceView
+from .history import build_history
 from .models import Chore
 from .points import credited_entries, pending_entries, sum_points
 from .schedule import local_date, local_datetime, week_start
@@ -35,6 +36,7 @@ from .schedule import local_date, local_datetime, week_start
 def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_occurrences)
     websocket_api.async_register_command(hass, ws_subscribe)
+    websocket_api.async_register_command(hass, ws_history)
 
 
 def _coordinator(hass: HomeAssistant) -> HusopgaverCoordinator | None:
@@ -247,3 +249,24 @@ def ws_subscribe(
         return
     send()
 
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "husopgaver/history",
+        # Udeladt: hele historikken.
+        vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=3660)),
+        vol.Optional("person"): str,
+    }
+)
+@callback
+def ws_history(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    coordinator = _coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_loaded", "Husopgaver er ikke sat op")
+        return
+    connection.send_result(
+        msg["id"],
+        build_history(coordinator, dt_util.utcnow(), msg.get("days"), msg.get("person")),
+    )

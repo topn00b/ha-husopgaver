@@ -294,6 +294,10 @@ Et eget Lovelace-kort, der følger med integrationen. Opdelingen er inspireret a
   - Kan slås fra per kort med `allow_edit: false`, fx på et dashboard kun til afkrydsning.
 - **Personfilter:** chips med "Alle" og hver person øverst. Valget huskes per enhed, så hvert familiemedlems telefon kan stå på sig selv.
 - **Pointtavle** (valgfri): ugens point per person, sorteret.
+- **Faner: Opgaver, Historik og Statistik.** Personfilteret gælder i alle tre. Historik og statistik hentes med `husopgaver/history` (`days`, valgfri; udeladt er alt, og `person`, valgfri) og hentes igen ved ændringer, mens fanen er åben.
+  - Perioder: 7 dage, 30 dage, 3 måneder, 1 år og alt.
+  - **Historik:** poster grupperet per dag, nyeste først: lavet (med point), lavet og godkendt, afventer godkendelse, sprunget over, ikke nødvendig, afvist og udbetalt. Fortrudte poster vises ikke. Slettede opgaver vises som "Slettet opgave". Højst 500 poster.
+  - **Statistik:** point og antal per person i perioden; point per uge (op til 120 dage) eller per måned, som stablede søjler i personernes farver; "Hvem laver hvad": antal per opgave per person.
 - **Farver:** Hver person har en valgfri farve i person-formularen. Ellers bruges en fast palet efter rækkefølge. Kortet bruger HA's tema-variabler og virker i lyst og mørkt tema.
 - **Tablet:** Trykflader er mindst 48 px, og layoutet går fra én kolonne på telefon til grupper side om side på tablet.
 - **Kortets indstillinger** (visuel editor): integrationen, standardfilter, om Senere og pointtavlen vises, og vinduet for Kommende.

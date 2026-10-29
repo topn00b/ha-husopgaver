@@ -86,6 +86,15 @@ Fjernes fluebenet inden for fortryd-vinduet, rulles afkrydsningen tilbage: point
 
 Se [eksemplet med aftensmad](examples/betingelse_aftensmad.md).
 
+## Historik og statistik
+
+Husopgaver-siden har fanerne **Opgaver**, **Historik** og **Statistik**:
+
+- **Historik** viser, hvem der har lavet, sprunget over eller fået afvist hvad, dag for dag.
+- **Statistik** viser point og antal per person, point per uge eller måned og hvem der laver hvad.
+
+Vælg periode (7 dage til alt) og evt. en person med filteret øverst. Loggen gemmes for altid, også for slettede opgaver og personer.
+
 ## Entiteter
 
 | Entitet | Indhold |

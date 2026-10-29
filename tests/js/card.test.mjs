@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  bucketLabel,
+  clockTime,
+  dayLabel,
+  groupByDay,
+  isoWeek,
   creditPerson,
   dueText,
   escapeHtml,
@@ -119,4 +124,28 @@ test("forældet kopi i browseren", () => {
   assert.equal(isOutdated(VERSION), false);
   assert.equal(isOutdated(undefined), false);
   assert.equal(isOutdated("0.0.1"), true);
+});
+
+test("ugenumre, etiketter og dage", () => {
+  assert.equal(isoWeek("2026-06-08"), 24);
+  assert.equal(isoWeek("2026-01-01"), 1);
+  assert.equal(isoWeek("2027-01-01"), 53);
+  assert.equal(bucketLabel("2026-06-08", "week", da, "da"), "Uge 24");
+  assert.match(bucketLabel("2026-06-01", "month", da, "da"), /2026/);
+  assert.equal(dayLabel("2026-06-10", "2026-06-10", da, "da"), "I dag");
+  assert.equal(dayLabel("2026-06-09", "2026-06-10", da, "da"), "I går");
+  assert.equal(clockTime(new Date("2026-06-10T16:05:00Z"), TZ), "18:05");
+  const days = groupByDay(
+    [
+      { id: "a", timestamp: "2026-06-10T08:00:00Z" },
+      { id: "b", timestamp: "2026-06-09T23:30:00Z" },
+      { id: "c", timestamp: "2026-06-09T21:00:00Z" },
+    ],
+    TZ,
+  );
+  // 23:30 UTC den 9. er den 10. i København.
+  assert.deepEqual(days.map(([d, e]) => [d, e.map((x) => x.id)]), [
+    ["2026-06-10", ["a", "b"]],
+    ["2026-06-09", ["c"]],
+  ]);
 });

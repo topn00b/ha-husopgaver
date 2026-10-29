@@ -74,6 +74,20 @@ const PAYLOAD = {
   ],
 };
 
+const HISTORY = {
+  since: "2026-05-12T22:00:00+00:00",
+  days: 30,
+  bucket: "week",
+  truncated: false,
+  entries: [
+    { id: "e1", timestamp: NOW_ISO, action: "completed", chore_id: "c1", chore_name: "Opvask", person_id: "b1", points: 2 },
+    { id: "e2", timestamp: NOW_ISO, action: "skipped", chore_id: null, chore_name: null, person_id: "v1", points: 0 },
+  ],
+  totals: { b1: { points: 2, count: 1 } },
+  buckets: [{ start: "2026-06-08", points: { b1: 2 } }],
+  chores: [{ chore_id: "c1", chore_name: "Opvask", counts: { b1: 1 }, total: 1 }],
+};
+
 function makeCard(config = {}) {
   localStorage.data = {};
   const Card = customElements.get("husopgaver-card");
@@ -91,6 +105,10 @@ function makeCard(config = {}) {
       },
     },
     callService: async (domain, service, data) => calls.push([service, data]),
+    callWS: async (msg) => {
+      calls.push(["ws", msg]);
+      return HISTORY;
+    },
   };
   card.setConfig(config);
   return { card, calls, push: (data) => push(data) };
@@ -253,4 +271,43 @@ test("viser Opdatér, når integrationen er nyere end kortet", async () => {
   assert.match(card.shadowRoot.innerHTML, /data-action="reload"/);
   push({ ...PAYLOAD });
   assert.doesNotMatch(card.shadowRoot.innerHTML, /data-action="reload"/);
+});
+
+test("faner: historik og statistik henter data og følger filter og periode", async () => {
+  const { card, calls, push } = makeCard();
+  await new Promise((r) => setTimeout(r));
+  push(PAYLOAD);
+  const target = (dataset) => ({ closest: () => ({ dataset }) });
+  card.shadowRoot.click(target({ action: "tab", tab: "history" }));
+  await new Promise((r) => setTimeout(r));
+  assert.deepEqual(calls.at(-1), ["ws", { type: "husopgaver/history", days: 30 }]);
+  let html = card.shadowRoot.innerHTML;
+  assert.match(html, /I dag/);
+  assert.match(html, /Opvask/);
+  assert.match(html, /\+2/);
+  assert.match(html, /Sprunget over/);
+  assert.match(html, /Slettet opgave/);
+  assert.doesNotMatch(html, /class="add"/);
+
+  card.shadowRoot.click(target({ action: "filter", person: "b1" }));
+  card.shadowRoot.click(target({ action: "period", days: "all" }));
+  await new Promise((r) => setTimeout(r));
+  assert.deepEqual(calls.at(-1), ["ws", { type: "husopgaver/history", person: "b1" }]);
+
+  card.shadowRoot.click(target({ action: "tab", tab: "stats" }));
+  await new Promise((r) => setTimeout(r));
+  html = card.shadowRoot.innerHTML;
+  assert.match(html, /Point per uge/);
+  assert.match(html, /Uge 24/);
+  assert.match(html, /Hvem laver hvad/);
+  assert.match(html, /2 point · 1 opgave/);
+
+  // Nye data, mens fanen er åben, henter historikken igen.
+  const before = calls.filter(([s]) => s === "ws").length;
+  push(PAYLOAD);
+  await new Promise((r) => setTimeout(r));
+  assert.equal(calls.filter(([s]) => s === "ws").length, before + 1);
+
+  card.shadowRoot.click(target({ action: "tab", tab: "chores" }));
+  assert.match(card.shadowRoot.innerHTML, /class="add"/);
 });

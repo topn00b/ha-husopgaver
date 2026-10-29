@@ -4,7 +4,7 @@
 
 // Skal svare til manifest.json (testet). Kortet sammenligner med integrationens
 // version og beder om en genindlæsning, hvis browseren kører en gammel kopi.
-export const VERSION = "0.7.1";
+export const VERSION = "0.8.0";
 
 const CARD_TYPE = "husopgaver-card";
 const EDITOR_TYPE = "husopgaver-card-editor";
@@ -29,6 +29,26 @@ const TEXTS = {
     title: "Husopgaver",
     all: "Alle",
     outdated: "Der er kommet en ny version af Husopgaver.",
+    tabs: { chores: "Opgaver", history: "Historik", stats: "Statistik" },
+    periods: { 7: "7 dage", 30: "30 dage", 90: "3 måneder", 365: "1 år", all: "Alt" },
+    actions: {
+      completed: "Lavet",
+      approved: "Lavet (godkendt)",
+      pending: "Afventer godkendelse",
+      skipped: "Sprunget over",
+      not_needed: "Ikke nødvendig",
+      rejected: "Afvist",
+      settled: "Udbetalt",
+    },
+    deleted_chore: "Slettet opgave",
+    no_history: "Ingen historik i perioden.",
+    truncated: "Viser de seneste 500.",
+    week: (n) => `Uge ${n}`,
+    totals: "I alt",
+    per_week: "Point per uge",
+    per_month: "Point per måned",
+    who_does_what: "Hvem laver hvad",
+    tasks: (n) => `${n} ${n === 1 ? "opgave" : "opgaver"}`,
     reload: "Opdatér",
     loading: "Indlæser…",
     not_loaded: "Husopgaver er ikke sat op.",
@@ -123,6 +143,26 @@ const TEXTS = {
     title: "Chores",
     all: "All",
     outdated: "A new version of Husopgaver is available.",
+    tabs: { chores: "Chores", history: "History", stats: "Statistics" },
+    periods: { 7: "7 days", 30: "30 days", 90: "3 months", 365: "1 year", all: "All" },
+    actions: {
+      completed: "Done",
+      approved: "Done (approved)",
+      pending: "Awaiting approval",
+      skipped: "Skipped",
+      not_needed: "Not needed",
+      rejected: "Rejected",
+      settled: "Settled",
+    },
+    deleted_chore: "Deleted chore",
+    no_history: "No history in this period.",
+    truncated: "Showing the latest 500.",
+    week: (n) => `Week ${n}`,
+    totals: "Total",
+    per_week: "Points per week",
+    per_month: "Points per month",
+    who_does_what: "Who does what",
+    tasks: (n) => `${n} ${n === 1 ? "chore" : "chores"}`,
     reload: "Update",
     loading: "Loading…",
     not_loaded: "Husopgaver is not set up.",
@@ -263,15 +303,19 @@ export function dueText(dueIso, hasTime, now, t, locale, timeZone) {
   else
     day = new Intl.DateTimeFormat(locale, { timeZone, day: "numeric", month: "short" }).format(due);
   if (!hasTime) return day;
-  // Altid 24-timers HH:MM, uanset hvilke locale-data browseren har.
+  return `${day} ${clockTime(due, timeZone)}`;
+}
+
+/** Klokkeslæt som 24-timers HH:MM i HA's tidszone, uanset browserens locale-data. */
+export function clockTime(date, timeZone) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(due);
+  }).formatToParts(date);
   const get = (type) => parts.find((p) => p.type === type).value;
-  return `${day} ${get("hour")}:${get("minute")}`;
+  return `${get("hour")}:${get("minute")}`;
 }
 
 /**
@@ -304,6 +348,50 @@ export function groupItems(items) {
     if (groups.has(item.group)) groups.get(item.group).push(item);
   }
   return GROUP_ORDER.filter((g) => groups.get(g).length).map((g) => [g, groups.get(g)]);
+}
+
+/** ISO-ugenummer for en dato (YYYY-MM-DD). */
+export function isoWeek(isoDay) {
+  const [y, m, d] = isoDay.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
+  return Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+}
+
+/** "Uge 24" eller "jun. 2026". */
+export function bucketLabel(startIso, kind, t, locale) {
+  if (kind === "week") return t.week(isoWeek(startIso));
+  const [y, m] = startIso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(y, m - 1, 1)),
+  );
+}
+
+/** "I dag", "I går" eller datoen. */
+export function dayLabel(dayIso, todayIso, t, locale) {
+  const diff = dayNumber(todayIso) - dayNumber(dayIso);
+  if (diff === 0) return t.today;
+  if (diff === 1) return t.yesterday;
+  const [y, m, d] = dayIso.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+/** Historikkens poster grupperet per lokal dag, nyeste først. */
+export function groupByDay(entries, timeZone) {
+  const days = new Map();
+  for (const entry of entries) {
+    const day = localDay(new Date(entry.timestamp), timeZone);
+    if (!days.has(day)) days.set(day, []);
+    days.get(day).push(entry);
+  }
+  return [...days.entries()];
 }
 
 /** Pointtavlen: aktive personer med flest point først. */
@@ -586,6 +674,24 @@ const STYLE = `
     min-height: 40px; padding: 0 16px; border-radius: 20px; border: none; cursor: pointer; font: inherit;
     font-weight: 500; background: var(--card-background-color, #fff); color: var(--primary-color);
   }
+  .tabs { display: inline-flex; border: 1px solid var(--divider-color); border-radius: 20px; overflow: hidden; }
+  .tabs button {
+    min-height: 40px; padding: 0 14px; border: none; background: none; cursor: pointer; font: inherit;
+    color: var(--primary-text-color);
+  }
+  .tabs button[aria-selected="true"] { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .filters { margin-bottom: 8px; }
+  .periods { margin-bottom: 8px; }
+  .history { display: grid; gap: 8px; }
+  .history-row .score, li .score { padding: 8px 12px; font-weight: 500; color: var(--primary-text-color); align-self: center; }
+  .stats { display: grid; gap: 12px 24px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .stat-row { display: grid; grid-template-columns: minmax(80px, 140px) 1fr auto; align-items: center; gap: 10px; min-height: 36px; }
+  .stat-name { color: var(--primary-text-color); overflow-wrap: anywhere; }
+  .stat-bar { display: flex; height: 14px; border-radius: 7px; background: var(--secondary-background-color, rgba(127,127,127,0.12)); overflow: hidden; }
+  .stat-bar span { display: block; height: 100%; }
+  .stat-value { font-size: 0.9em; color: var(--secondary-text-color); white-space: nowrap; }
+  .chore-row { grid-template-columns: minmax(80px, 160px) 1fr; }
+  .count-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85em; color: var(--primary-text-color); padding: 2px 8px; border-radius: 12px; border: 1px solid var(--divider-color); }
   .error { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--error-color, #db4437); color: #fff; }
 `;
 
@@ -599,6 +705,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       this._error = null;
       this._unsub = null;
       this._edit = null; // formularen, når en opgave oprettes eller rettes
+      this._tab = "chores";
+      this._period = 30;
+      this._history = null;
       this.shadowRoot.addEventListener("click", (ev) => this._onClick(ev));
       this.shadowRoot.addEventListener("input", (ev) => this._onInput(ev));
     }
@@ -666,7 +775,8 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
           this._data = data;
           // Under redigering tegnes kortet først om, når formularen lukkes,
           // så det, der skrives, ikke forsvinder.
-          if (!this._edit) this._render();
+          if (this._tab !== "chores") this._loadHistory();
+          else if (!this._edit) this._render();
         }, message);
       } catch (err) {
         this._unsub = null;
@@ -713,6 +823,18 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         case "filter":
           this._filter = person || null;
           storageSet(this._storageKey(), this._filter ?? "");
+          if (this._tab !== "chores") this._loadHistory();
+          this._render();
+          return;
+        case "tab":
+          this._tab = el.dataset.tab;
+          this._edit = null;
+          if (this._tab !== "chores") this._loadHistory();
+          this._render();
+          return;
+        case "period":
+          this._period = el.dataset.days === "all" ? null : Number(el.dataset.days);
+          this._loadHistory();
           this._render();
           return;
         case "menu":
@@ -771,6 +893,22 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         default:
           if (this._edit) this._onFormClick(action, el.dataset);
       }
+    }
+
+    async _loadHistory() {
+      const request = { type: "husopgaver/history" };
+      if (this._period) request.days = this._period;
+      if (this._filter) request.person = this._filter;
+      const key = JSON.stringify(request);
+      this._historyKey = key;
+      try {
+        const result = await this._hass.callWS(request);
+        // Kun det seneste svar vises, hvis der er skiftet periode imens.
+        if (this._historyKey === key) this._history = result;
+      } catch (err) {
+        this._error = err?.message || String(err);
+      }
+      this._render();
     }
 
     _today() {
@@ -870,8 +1008,20 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
       if (!this._data) body = `<div class="message">${t.loading}</div>`;
       else if (this._data.loaded === false) body = `<div class="message">${t.not_loaded}</div>`;
       else if (this._edit) body = this._renderForm(t);
+      else if (this._tab === "history") body = this._renderHistory(t);
+      else if (this._tab === "stats") body = this._renderStats(t);
       else body = this._renderContent(t);
-      const canAdd = this._config.allow_edit && this._data?.loaded && !this._edit;
+      const canAdd =
+        this._config.allow_edit && this._data?.loaded && !this._edit && this._tab === "chores";
+      const tabs =
+        this._data?.loaded && !this._edit
+          ? `<div class="tabs" role="tablist">${Object.entries(t.tabs)
+              .map(
+                ([tab, label]) =>
+                  `<button role="tab" data-action="tab" data-tab="${tab}" aria-selected="${this._tab === tab}">${label}</button>`,
+              )
+              .join("")}</div>`
+          : "";
       const addButton = canAdd
         ? `<button class="add" data-action="new">＋ ${t.new_chore}</button>`
         : "";
@@ -884,9 +1034,10 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         <ha-card>
           <div class="header">
             ${title ? `<div class="title">${escapeHtml(title)}</div>` : ""}
+            ${tabs}
             ${addButton}
-            ${this._data?.persons && !this._edit ? this._renderChips(t) : ""}
           </div>
+          ${this._data?.persons && !this._edit ? `<div class="filters">${this._renderChips(t)}</div>` : ""}
           ${outdated}
           ${body}
           ${error}
@@ -1104,6 +1255,122 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
             <button type="button" class="primary" data-action="save" ${form.saving ? "disabled" : ""}>${form.saving ? t.saving : t.save}</button>
           </div>
         </form>`;
+    }
+
+    _renderPeriods(t) {
+      return `<div class="chips periods">${Object.entries(t.periods)
+        .map(([days, label]) => {
+          const value = days === "all" ? null : Number(days);
+          return `<button class="chip" data-action="period" data-days="${days}" aria-pressed="${this._period === value}">${label}</button>`;
+        })
+        .join("")}</div>`;
+    }
+
+    _renderHistory(t) {
+      const history = this._history;
+      if (!history) return `${this._renderPeriods(t)}<div class="message">${t.loading}</div>`;
+      const persons = this._data.persons;
+      const tz = this._hass?.config?.time_zone;
+      const locale = this._hass?.locale?.language || "da";
+      if (!history.entries.length) {
+        return `${this._renderPeriods(t)}<div class="message">${t.no_history}</div>`;
+      }
+      const today = this._today();
+      const days = groupByDay(history.entries, tz)
+        .map(([day, entries]) => {
+          const rows = entries
+            .map((e) => {
+              const person = persons.find((p) => p.id === e.person_id);
+              const color = personColor(persons, e.person_id);
+              const time = clockTime(new Date(e.timestamp), tz);
+              const name = e.action === "settled" ? t.actions.settled : e.chore_name ?? t.deleted_chore;
+              const action = e.action === "settled" ? "" : t.actions[e.action];
+              const credited = e.action === "completed" || e.action === "approved";
+              return `<li class="history-row" style="--person-color:${escapeHtml(color)}">
+                <div class="bar"></div>
+                <div class="main">
+                  <div class="name">${escapeHtml(name)}</div>
+                  <div class="meta">
+                    <span class="person"><span class="dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(person?.name ?? t.unassigned)}</span>
+                    <span>${escapeHtml(time)}</span>
+                    ${action ? `<span class="${credited ? "" : "flag"}">${action}</span>` : ""}
+                  </div>
+                </div>
+                <div class="score">${credited ? `+${e.points}` : ""}</div>
+              </li>`;
+            })
+            .join("");
+          return `<section><h3>${escapeHtml(dayLabel(day, today, t, locale))}</h3><ul>${rows}</ul></section>`;
+        })
+        .join("");
+      return `${this._renderPeriods(t)}<div class="history">${days}</div>${
+        history.truncated ? `<div class="message">${t.truncated}</div>` : ""
+      }`;
+    }
+
+    _renderStats(t) {
+      const history = this._history;
+      if (!history) return `${this._renderPeriods(t)}<div class="message">${t.loading}</div>`;
+      const persons = this._data.persons.filter(
+        (p) => p.active || history.totals[p.id],
+      );
+      const shown = this._filter ? persons.filter((p) => p.id === this._filter) : persons;
+      const locale = this._hass?.locale?.language || "da";
+      const maxTotal = Math.max(1, ...shown.map((p) => history.totals[p.id]?.points || 0));
+      const totals = shown
+        .map((p) => {
+          const total = history.totals[p.id] || { points: 0, count: 0 };
+          const color = personColor(this._data.persons, p.id);
+          return `<div class="stat-row">
+            <span class="stat-name">${escapeHtml(p.name)}</span>
+            <span class="stat-bar"><span style="width:${(total.points / maxTotal) * 100}%;background:${escapeHtml(color)}"></span></span>
+            <span class="stat-value">${t.points(total.points)} · ${t.tasks(total.count)}</span>
+          </div>`;
+        })
+        .join("");
+      const maxBucket = Math.max(
+        1,
+        ...history.buckets.map((b) => Object.values(b.points).reduce((a, n) => a + n, 0)),
+      );
+      const buckets = history.buckets
+        .slice()
+        .reverse()
+        .map((b) => {
+          const sum = Object.values(b.points).reduce((a, n) => a + n, 0);
+          const segments = shown
+            .filter((p) => b.points[p.id])
+            .map(
+              (p) =>
+                `<span title="${escapeHtml(p.name)}: ${b.points[p.id]}" style="width:${(b.points[p.id] / maxBucket) * 100}%;background:${escapeHtml(personColor(this._data.persons, p.id))}"></span>`,
+            )
+            .join("");
+          return `<div class="stat-row">
+            <span class="stat-name">${escapeHtml(bucketLabel(b.start, history.bucket, t, locale))}</span>
+            <span class="stat-bar stacked">${segments}</span>
+            <span class="stat-value">${sum}</span>
+          </div>`;
+        })
+        .join("");
+      const chores = history.chores
+        .map(
+          (c) => `<div class="stat-row chore-row">
+            <span class="stat-name">${escapeHtml(c.chore_name ?? t.deleted_chore)}</span>
+            <span class="chips">${shown
+              .filter((p) => c.counts[p.id])
+              .map(
+                (p) =>
+                  `<span class="count-chip"><span class="dot" style="background:${escapeHtml(personColor(this._data.persons, p.id))}"></span>${escapeHtml(p.name)} ${c.counts[p.id]}</span>`,
+              )
+              .join("")}</span>
+          </div>`,
+        )
+        .join("");
+      return `${this._renderPeriods(t)}
+        <div class="stats">
+          <section><h3>${t.totals}</h3>${totals}</section>
+          <section><h3>${history.bucket === "week" ? t.per_week : t.per_month}</h3>${buckets}</section>
+          ${chores ? `<section><h3>${t.who_does_what}</h3>${chores}</section>` : ""}
+        </div>`;
     }
 
     _renderBoard(t, persons) {

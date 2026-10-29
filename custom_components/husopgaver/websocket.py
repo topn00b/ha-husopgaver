@@ -148,6 +148,7 @@ def build_payload(
     viewer = coordinator.person_for_user(user_id)
     return {
         "loaded": True,
+        "version": coordinator.version,
         "persons": persons,
         "items": items,
         "chores": [_chore_config(chore) for chore in coordinator.chores.values()],

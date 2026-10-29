@@ -245,3 +245,12 @@ test("den, der har tid: spørger hvem på den fælles tablet", async () => {
   await new Promise((r) => setTimeout(r));
   assert.deepEqual(calls.at(-1), ["complete", { chore: "o", person: "v1" }]);
 });
+
+test("viser Opdatér, når integrationen er nyere end kortet", async () => {
+  const { card, push } = makeCard();
+  await new Promise((r) => setTimeout(r));
+  push({ ...PAYLOAD, version: "99.0.0" });
+  assert.match(card.shadowRoot.innerHTML, /data-action="reload"/);
+  push({ ...PAYLOAD });
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /data-action="reload"/);
+});

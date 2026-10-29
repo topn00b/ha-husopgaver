@@ -8,6 +8,8 @@ import {
   escapeHtml,
   filterItems,
   groupItems,
+  isOutdated,
+  VERSION,
   localDay,
   personColor,
   PALETTE,
@@ -111,4 +113,10 @@ test("pointtavle", () => {
 test("escape", () => {
   assert.equal(escapeHtml('<b a="1">&\''), "&lt;b a=&quot;1&quot;&gt;&amp;&#39;");
   assert.equal(escapeHtml(null), "");
+});
+
+test("forældet kopi i browseren", () => {
+  assert.equal(isOutdated(VERSION), false);
+  assert.equal(isOutdated(undefined), false);
+  assert.equal(isOutdated("0.0.1"), true);
 });

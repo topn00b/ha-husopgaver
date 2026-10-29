@@ -2,6 +2,10 @@
 // Rent web component uden byggetrin, CDN eller eksterne biblioteker.
 // Data kommer fra websocket-abonnementet husopgaver/subscribe, færdiggrupperet.
 
+// Skal svare til manifest.json (testet). Kortet sammenligner med integrationens
+// version og beder om en genindlæsning, hvis browseren kører en gammel kopi.
+export const VERSION = "0.7.1";
+
 const CARD_TYPE = "husopgaver-card";
 const EDITOR_TYPE = "husopgaver-card-editor";
 const PANEL_TYPE = "husopgaver-panel";
@@ -24,6 +28,8 @@ const TEXTS = {
   da: {
     title: "Husopgaver",
     all: "Alle",
+    outdated: "Der er kommet en ny version af Husopgaver.",
+    reload: "Opdatér",
     loading: "Indlæser…",
     not_loaded: "Husopgaver er ikke sat op.",
     empty: "Ingen opgaver lige nu.",
@@ -116,6 +122,8 @@ const TEXTS = {
   en: {
     title: "Chores",
     all: "All",
+    outdated: "A new version of Husopgaver is available.",
+    reload: "Update",
     loading: "Loading…",
     not_loaded: "Husopgaver is not set up.",
     empty: "No chores right now.",
@@ -206,6 +214,11 @@ const TEXTS = {
     err_date: "Choose a date.",
   },
 };
+
+/** Om browseren kører en ældre kopi af kortet end integrationen. */
+export function isOutdated(serverVersion, cardVersion = VERSION) {
+  return Boolean(serverVersion) && serverVersion !== cardVersion;
+}
 
 /** Tekster på brugerens sprog. Andre sprog end dansk får engelsk. */
 export function texts(language) {
@@ -563,6 +576,16 @@ const STYLE = `
   .form-buttons .primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; font-weight: 500; }
   .form-buttons .danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
   .form-buttons button[disabled] { opacity: 0.6; cursor: default; }
+  .outdated {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px;
+    padding: 8px 8px 8px 14px; border-radius: 10px; background: var(--primary-color);
+    color: var(--text-primary-color, #fff);
+  }
+  .outdated span { flex: 1; }
+  .outdated button {
+    min-height: 40px; padding: 0 16px; border-radius: 20px; border: none; cursor: pointer; font: inherit;
+    font-weight: 500; background: var(--card-background-color, #fff); color: var(--primary-color);
+  }
   .error { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--error-color, #db4437); color: #fff; }
 `;
 
@@ -730,6 +753,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         case "reassign":
           this._call("reassign", { chore: item.chore_id, person });
           return;
+        case "reload":
+          window.location.reload();
+          return;
         case "new":
           this._edit = newForm(this._today(), this._filter);
           this._render();
@@ -850,6 +876,9 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         ? `<button class="add" data-action="new">＋ ${t.new_chore}</button>`
         : "";
       const error = this._error ? `<div class="error" role="alert">${escapeHtml(this._error)}</div>` : "";
+      const outdated = isOutdated(this._data?.version)
+        ? `<div class="outdated" role="status"><span>${t.outdated}</span><button data-action="reload">${t.reload}</button></div>`
+        : "";
       this.shadowRoot.innerHTML = `
         <style>${STYLE}</style>
         <ha-card>
@@ -858,6 +887,7 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
             ${addButton}
             ${this._data?.persons && !this._edit ? this._renderChips(t) : ""}
           </div>
+          ${outdated}
           ${body}
           ${error}
         </ha-card>`;

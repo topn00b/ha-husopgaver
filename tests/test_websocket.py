@@ -117,6 +117,7 @@ async def test_occurrences_command(hass, setup, hass_ws_client, hass_admin_user)
     assert response["success"]
     result = response["result"]
     assert result["loaded"] and result["upcoming_days"] == 5
+    assert result["version"] == "0.7.1"
     assert result["viewer"]["person_id"] == "v2"
     assert result["items"][0]["name"] == "Tøm opvaskemaskinen"
 

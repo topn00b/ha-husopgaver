@@ -194,6 +194,8 @@ class HusopgaverCoordinator:
         self._unsub_timer: CALLBACK_TYPE | None = None
         self._unsub_action: CALLBACK_TYPE | None = None
         self._checking: set[tuple[str, str]] = set()
+        # Integrationens version; kortet sammenligner med sin egen.
+        self.version: str | None = None
 
     def _parse[T: (Person, Chore)](self, kind: str, cls: type[T]) -> dict[str, T]:
         parsed: dict[str, T] = {}

@@ -7,6 +7,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .coordinator import HusopgaverCoordinator
@@ -34,6 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: HusopgaverConfigEntry) -
     storage = HusopgaverStorage(hass, entry.entry_id)
     await storage.async_load()
     coordinator = HusopgaverCoordinator(hass, entry, storage)
+    coordinator.version = str((await async_get_integration(hass, DOMAIN)).version)
     coordinator.async_start()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -1,0 +1,37 @@
+# Notifikation med knapper til de voksne, når et barn har krydset af.
+# Husopgaver lytter selv på knapperne (HUSOPGAVER_APPROVE_/HUSOPGAVER_REJECT_
+# efterfulgt af log_id) og godkender som den bruger, telefonen er logget ind som.
+# Brug denne automation i stedet for "Indbyggede notifikationer" på opgaven,
+# hvis du vil styre teksten eller modtagerne selv.
+alias: Husopgaver - godkendelse
+triggers:
+    - trigger: event
+      event_type: husopgaver_approval_requested
+actions:
+    - action: notify.mobile_app_voksen_1
+      data:
+          title: "{{ trigger.event.data.chore_name }}"
+          message: >-
+              {{ trigger.event.data.person_name }} har lavet
+              {{ trigger.event.data.chore_name }}. Godkend?
+          data:
+              tag: "husopgaver_{{ trigger.event.data.log_id }}"
+              actions:
+                  - action: "HUSOPGAVER_APPROVE_{{ trigger.event.data.log_id }}"
+                    title: Godkend
+                  - action: "HUSOPGAVER_REJECT_{{ trigger.event.data.log_id }}"
+                    title: Afvis
+    - action: notify.mobile_app_voksen_2
+      data:
+          title: "{{ trigger.event.data.chore_name }}"
+          message: >-
+              {{ trigger.event.data.person_name }} har lavet
+              {{ trigger.event.data.chore_name }}. Godkend?
+          data:
+              tag: "husopgaver_{{ trigger.event.data.log_id }}"
+              actions:
+                  - action: "HUSOPGAVER_APPROVE_{{ trigger.event.data.log_id }}"
+                    title: Godkend
+                  - action: "HUSOPGAVER_REJECT_{{ trigger.event.data.log_id }}"
+                    title: Afvis
+mode: queued

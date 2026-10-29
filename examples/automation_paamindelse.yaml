@@ -1,0 +1,19 @@
+# Påmindelse til den tildelte, når en opgave bliver forfalden.
+# notify_target kommer fra eventet (personens notify-mål i Husopgaver).
+alias: Husopgaver - påmindelse ved forfald
+triggers:
+    - trigger: event
+      event_type: husopgaver_due
+conditions:
+    - condition: template
+      value_template: "{{ trigger.event.data.notify_target is not none }}"
+actions:
+    - action: "{{ trigger.event.data.notify_target }}"
+      data:
+          title: "{{ trigger.event.data.chore_name }}"
+          message: >-
+              {{ trigger.event.data.chore_name }} skal laves nu
+              ({{ trigger.event.data.points }} point).
+          data:
+              tag: "husopgaver_{{ trigger.event.data.chore_id }}"
+mode: queued

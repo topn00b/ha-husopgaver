@@ -2,7 +2,15 @@
 
 Lokal Home Assistant-integration til familiens husopgaver: tilbagevendende opgaver, rotation, point og godkendelse af børnenes opgaver. Alt kører i Home Assistant, uden cloud og uden ekstra container.
 
-> **Status:** under udvikling (v0.2.0). Kan installeres og prøves: personer, opgaver, rotation, point, godkendelse, todo-lister, kalender og services virker. Betingelser (kalender/entitet), eksempler og dashboardkortet mangler. Se [SPEC.md](SPEC.md) for kravene og byggeplanen.
+- Opgaver med engangs-, interval-, ugentlig og årlig gentagelse, med eller uden tidspunkt.
+- Tildeling: fast, på skift, færrest point eller én per person. Fravær (person væk hjemmefra) tages i betragtning.
+- Point per uge, måned, i alt og siden udbetaling.
+- Godkendelse af børnenes afkrydsninger, også med knapper i en notifikation.
+- Betingelser: en opgave er ikke nødvendig, når kalenderen siger, I er væk, eller en entitet har en bestemt state.
+- Todo-lister per person, en kalender og et eget dashboardkort.
+- Sommer- og vintertid er håndteret og testet.
+
+Kræver Home Assistant 2026.10 eller nyere.
 
 ## Installation (HACS)
 
@@ -11,13 +19,144 @@ Lokal Home Assistant-integration til familiens husopgaver: tilbagevendende opgav
 3. Installér **Husopgaver**, og genstart Home Assistant.
 4. **Indstillinger → Enheder og tjenester → Tilføj integration → Husopgaver**.
 
-Kræver Home Assistant 2026.10 eller nyere.
-
 ## Kom i gang
 
 1. Åbn **Husopgaver** under Enheder og tjenester.
-2. **Tilføj person** for hvert familiemedlem. Knyt personen til en person i Home Assistant, så fravær og godkendelse virker. Sæt "Kan godkende" for de voksne og "Afkrydsninger skal godkendes" for børnene.
-3. **Tilføj opgave**: navn, point, personer, tildeling og gentagelse. Næste trin viser felterne for den valgte gentagelse.
-4. Brug todo-listerne `todo.husopgaver_<person>` i appen eller på et dashboard. Afkrydsning giver point, og fjernes fluebenet inden for 10 minutter, fortrydes det.
+2. **Tilføj person** for hvert familiemedlem.
+   - Knyt personen til en person i Home Assistant. Det bruges til fravær og til at vide, hvem der må godkende.
+   - Sæt **Kan godkende** for de voksne og **Afkrydsninger skal godkendes** for børnene.
+   - Vælg evt. en farve til dashboardkortet og et notify-mål til notifikationer.
+3. **Tilføj opgave**: navn, point, personer, tildeling og gentagelse. Næste trin viser felterne for den valgte gentagelse. Under **Avanceret** findes godkendelse, vindue for afkrydsning, indbyggede notifikationer og betingelser.
+4. Læg dashboardkortet eller todo-listerne på et dashboard (se [Dashboard](#dashboard)).
 
-Indstillinger (dage frem på listerne, pointvindue, fravær, fortryd-vindue og listen "Alle opgaver") findes under **Konfigurer**.
+**Konfigurer** på integrationen har indstillingerne:
+
+| Indstilling | Standard |
+|---|---|
+| Dage frem på listerne | 2 |
+| Pointvindue for "Færrest point" | 30 dage |
+| Fravær efter | 24 timer væk hjemmefra |
+| Fortryd-vindue | 10 minutter |
+| Listen "Alle opgaver" | Fra |
+
+## Sådan virker det
+
+### Status
+- **Kommende:** før forfaldsdagen. Vises på listerne inden for "dage frem".
+- **Forfalden:** fra midnat på forfaldsdagen, eller fra tidspunktet, hvis opgaven har et.
+- **Overskredet:** fra midnat dagen efter, eller 1 time efter tidspunktet.
+- En overskredet opgave hober sig ikke op: den er én opgave, uanset hvor mange gange den er sprunget over.
+
+### Tildeling
+| Tildeling | Hvem |
+|---|---|
+| Fast | Altid den første person. |
+| På skift | Personerne i rækkefølge. Fraværende springes over. |
+| Færrest point | Den med færrest point i pointvinduet. Står det lige, den der længst har ikke lavet netop denne opgave. |
+| Alle | Hver person har sin egen forekomst, fx børnenes morgenrutine. |
+
+Krydser en anden af end den tildelte, går pointene til den, der krydsede af.
+
+### Godkendelse
+Når et barn krydser af, afventer opgaven godkendelse og giver først point, når en voksen godkender. Det kan gøres:
+- på listen `todo.husopgaver_godkendelse`,
+- med knapperne i notifikationen (indbygget eller [egen automation](examples/automation_godkendelse.yaml)),
+- med servicen `husopgaver.approve`.
+
+Godkendelse kræver en Home Assistant-bruger, der er knyttet til en person med **Kan godkende**. Den fælles køkkenbruger kan ikke godkende.
+
+### Fortryd
+Fjernes fluebenet inden for fortryd-vinduet, rulles afkrydsningen tilbage: point, forfald og tildeling. Det gælder kun den seneste handling på en opgave.
+
+### Betingelser
+- **Kalender-nøgleord:** Ikke nødvendig, hvis en begivenhed med et af nøgleordene er i gang på opgavens tidspunkt (uden tidspunkt: den dag). Tjekkes på et fast tidspunkt på forfaldsdagen, fx kl. 14.
+- **Entitet:** Kun nødvendig, når entiteten har en bestemt state, fx `input_boolean.gaester` = `on`.
+- En opgave, der ikke er nødvendig, logges med 0 point og forsvinder fra listerne. Rotationen rykker ikke.
+- Er kalenderen eller entiteten utilgængelig, bliver opgaven stående med "Betingelse ukendt".
+
+Se [eksemplet med aftensmad](examples/betingelse_aftensmad.md).
+
+## Entiteter
+
+| Entitet | Indhold |
+|---|---|
+| `todo.husopgaver_<person>` | Personens opgaver. Afkrydsning krediteres listens ejer. Et nyt punkt bliver en engangsopgave med 1 point. |
+| `todo.husopgaver_alle` | Alle opgaver (valgfri). Afkrydsning krediteres den tildelte. |
+| `todo.husopgaver_godkendelse` | Afventende godkendelser. Afkrydsning godkender. |
+| `sensor.husopgaver_<person>_point` | Ugens point. Attributter: `month`, `all_time`, `since_settlement`, `pending`, `completed_count`, `overdue_count`. |
+| `calendar.husopgaver` | Opgavernes kommende forekomster. |
+
+Entitets-id'erne er faste uanset Home Assistants sprog.
+
+## Services
+
+| Service | Felter |
+|---|---|
+| `husopgaver.complete` | `chore`, `person` (valgfri) |
+| `husopgaver.skip` | `chore`, `person` (ved "Alle") |
+| `husopgaver.reassign` | `chore`, `person` |
+| `husopgaver.snooze` | `chore`, `duration`, `person` (ved "Alle") |
+| `husopgaver.approve` / `reject` / `undo` | `log_id` eller `chore` |
+| `husopgaver.settle` | `person` |
+| `husopgaver.create_chore` / `update_chore` / `delete_chore` | Opgavens felter |
+
+`chore` kan være opgavens navn, id eller todo-punkt. `person` kan være navn, id eller person-entitet. Handlingerne returnerer `log_id`, og `create_chore` returnerer `chore_id`.
+
+```yaml
+action: husopgaver.complete
+data:
+    chore: Tøm opvaskemaskinen
+    person: Barn 1
+```
+
+```yaml
+action: husopgaver.create_chore
+data:
+    name: Skift sengetøj
+    assignees:
+        - Voksen 1
+        - Voksen 2
+    assignment: round_robin
+    repeat: interval
+    every: 2
+    unit: week
+    points: 3
+```
+
+## Events
+
+`husopgaver_due`, `husopgaver_overdue`, `husopgaver_reminder`, `husopgaver_completed`, `husopgaver_skipped`, `husopgaver_not_needed`, `husopgaver_approval_requested`, `husopgaver_rejected`
+
+Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `notify_target`, `points`, `due` (ISO) og `log_id`, når der er en log-post.
+
+Påmindelser laves som almindelige automationer på eventsene, se [eksemplet](examples/automation_paamindelse.yaml). Alternativt kan "Indbyggede notifikationer" slås til per opgave.
+
+## Dashboard
+
+- **Dashboardkortet** `custom:husopgaver-card` følger med integrationen og kræver ingen ekstra installation. Det viser opgaverne grupperet som Afventer godkendelse, Overskredet, I dag, Kommende og Senere, med personfilter, afkrydsning med ét tryk og pointtavle.
+
+  ```yaml
+  type: custom:husopgaver-card
+  ```
+
+  Se [eksemplet](examples/dashboard_husopgaver_card.yaml) og kortets indstillinger i den visuelle editor.
+- **Kun indbyggede kort:** [examples/dashboard_koekken.yaml](examples/dashboard_koekken.yaml) har kalender, en liste per person, pointtavle og godkendelser.
+
+## Eksempler
+
+| Fil | Indhold |
+|---|---|
+| [dashboard_husopgaver_card.yaml](examples/dashboard_husopgaver_card.yaml) | Køkkentablet med dashboardkortet. |
+| [dashboard_koekken.yaml](examples/dashboard_koekken.yaml) | Køkkentablet med indbyggede kort. |
+| [automation_paamindelse.yaml](examples/automation_paamindelse.yaml) | Påmindelse til den tildelte ved forfald. |
+| [automation_godkendelse.yaml](examples/automation_godkendelse.yaml) | Notifikation med Godkend og Afvis til de voksne. |
+| [automation_nfc.yaml](examples/automation_nfc.yaml) | Kryds af med et NFC-tag. |
+| [betingelse_aftensmad.md](examples/betingelse_aftensmad.md) | Aftensmad, der ikke er nødvendig, når familien er væk. |
+
+## Data
+
+Personer og opgaver ligger i integrationens konfiguration. Tilstand og log ligger i `.storage/husopgaver.<entry_id>`. Loggen slettes aldrig, heller ikke når en person eller opgave slettes.
+
+## Licens
+
+[MIT](LICENSE)

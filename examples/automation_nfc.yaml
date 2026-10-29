@@ -1,0 +1,12 @@
+# Kryds en opgave af ved at scanne et NFC-tag, fx på opvaskemaskinen.
+# Uden "person" går pointene til den tildelte. Vil du kreditere en bestemt
+# person, så lav et tag per person og tilføj fx  person: Barn 1
+alias: Husopgaver - NFC opvaskemaskine
+triggers:
+    - trigger: tag
+      tag_id: opvaskemaskine
+actions:
+    - action: husopgaver.complete
+      data:
+          chore: Tøm opvaskemaskinen
+mode: single

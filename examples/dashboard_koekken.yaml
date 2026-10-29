@@ -1,0 +1,90 @@
+# Køkkentablet: kalender, en liste per person, pointtavle og godkendelser.
+# Kun indbyggede kort. Ret entiteterne til jeres personer.
+title: Køkken
+views:
+    - title: Husopgaver
+      path: husopgaver
+      type: sections
+      max_columns: 4
+      sections:
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Kalender
+                - type: calendar
+                  initial_view: listWeek
+                  entities:
+                      - calendar.familie
+                      - calendar.husopgaver
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Voksen 1
+                - type: todo-list
+                  entity: todo.husopgaver_voksen_1
+                  hide_completed: false
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Voksen 2
+                - type: todo-list
+                  entity: todo.husopgaver_voksen_2
+                  hide_completed: false
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Barn 1
+                - type: todo-list
+                  entity: todo.husopgaver_barn_1
+                  hide_completed: false
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Barn 2
+                - type: todo-list
+                  entity: todo.husopgaver_barn_2
+                  hide_completed: false
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Point denne uge
+                - type: entities
+                  state_color: false
+                  entities:
+                      - entity: sensor.husopgaver_voksen_1_point
+                        name: Voksen 1
+                      - entity: sensor.husopgaver_voksen_2_point
+                        name: Voksen 2
+                      - entity: sensor.husopgaver_barn_1_point
+                        name: Barn 1
+                      - entity: sensor.husopgaver_barn_2_point
+                        name: Barn 2
+                  grid_options:
+                      columns: full
+          - type: grid
+            cards:
+                - type: heading
+                  heading: Afventer godkendelse
+                - type: conditional
+                  conditions:
+                      - condition: state
+                        entity: todo.husopgaver_godkendelse
+                        state_not: "0"
+                  card:
+                      type: todo-list
+                      entity: todo.husopgaver_godkendelse
+                      hide_create: true
+                - type: markdown
+                  content: Afkrydsning godkender. Det kræver en voksen, der er logget ind som sig selv, ikke køkkenbrugeren.
+                  grid_options:
+                      columns: full

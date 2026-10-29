@@ -121,7 +121,9 @@ Tildelingen beregnes, når en opgave oprettes, og efter hver `completed`, `skipp
 
 ## 5. Betingelser (dynamiske opgaver)
 Valgfri per opgave. Tjekket sker på `check_time`, fx kl. 14:00 på forfaldsdagen.
-- **Kalender-nøgleord:** `calendar` og `keywords`. Har kalenderen en begivenhed den dag, der indeholder et af nøgleordene, er opgaven *ikke nødvendig*. Begivenhederne hentes med `calendar.get_events` på tidspunktet for tjekket, ikke løbende.
+- **Kalender-nøgleord:** `calendar` og `keywords`. Er der en begivenhed med et af nøgleordene **i gang på opgavens tidspunkt** (`due_time`), er opgaven *ikke nødvendig*. Har opgaven ingen `due_time`, gælder enhver begivenhed den dag. Begivenhederne hentes med `calendar.get_events` på tidspunktet for tjekket, ikke løbende.
+  - Eksempel: Et besøg fra tirsdag morgen til onsdag kl. 15 gør aftensmad kl. 18 tirsdag *ikke nødvendig*. Onsdag er den *nødvendig*.
+  - Tests: en flerdagsbegivenhed, der slutter før `due_time`, en begivenhed, der starter efter `due_time`, og en heldagsbegivenhed.
 - **Entitet:** `entity` og `active_state` (standard `on`). Opgaven er kun nødvendig, når entiteten har den state.
 - **Ikke nødvendig:** Opgaven fjernes fra listerne og logges som `not_needed` med 0 point. Rotationen rykker ikke, og næste forfald beregnes.
 - **Ukendt:** Er kalenderen eller entiteten `unavailable`/`unknown`, bliver opgaven stående med `condition_state: unknown`. Den skjules ikke stille.

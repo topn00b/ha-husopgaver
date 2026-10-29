@@ -24,6 +24,7 @@ from homeassistant.exceptions import (
     HomeAssistantError,
     ServiceValidationError,
 )
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
@@ -50,6 +51,7 @@ from .const import (
     EVENT_REMINDER,
     EVENT_SKIPPED,
     SHARED_OCCURRENCE,
+    SIGNAL_UPDATED,
     SUBENTRY_CHORE,
     SUBENTRY_PERSON,
     ApprovalMode,
@@ -193,6 +195,9 @@ class HusopgaverCoordinator:
 
     @callback
     def async_start(self) -> None:
+        # Websocket-abonnementer finder koordinatoren her, også mens
+        # integrationen stadig er ved at blive sat op efter en genindlæsning.
+        self.hass.data[DOMAIN] = self
         now = dt_util.utcnow()
         for chore_id in set(self.storage.chore_states) - set(self.chores):
             self.storage.remove_chore_state(chore_id)
@@ -205,6 +210,8 @@ class HusopgaverCoordinator:
 
     @callback
     def async_stop(self) -> None:
+        if self.hass.data.get(DOMAIN) is self:
+            del self.hass.data[DOMAIN]
         if self._unsub_timer is not None:
             self._unsub_timer()
             self._unsub_timer = None
@@ -1060,6 +1067,7 @@ class HusopgaverCoordinator:
     def _notify_listeners(self) -> None:
         for listener in list(self._listeners):
             listener()
+        async_dispatcher_send(self.hass, SIGNAL_UPDATED)
 
     @callback
     def _fire(

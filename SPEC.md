@@ -279,7 +279,13 @@ Et eget Lovelace-kort, der følger med integrationen. Opdelingen er inspireret a
 - **Tablet:** Trykflader er mindst 48 px, og layoutet går fra én kolonne på telefon til grupper side om side på tablet.
 - **Kortets indstillinger** (visuel editor): integrationen, standardfilter, om Senere og pointtavlen vises, og vinduet for Kommende.
 - **Sprog:** dansk og engelsk efter brugerens sprog i HA.
-- **Tests:** Websocket-kommandoen og abonnementet testes med pytest. Kortets egen logik til gruppering og tekster for forfald ligger i rene funktioner med tests.
+- **Tests:** Websocket-kommandoen og abonnementet testes med pytest. Kortets rene funktioner (forfaldstekst, filter, farver, hvem der krediteres) testes med `node --test` i CI.
+- **Gruppering** sker i integrationen (`husopgaver/subscribe` sender `group` per punkt), så den ligger ét sted og er testet i Python:
+  - `pending`: afventer godkendelse. `overdue`: overskredet. `today`: forfald i dag. `upcoming`: inden for vinduet. `later`: senere. `done`: dagens afkrydsninger (kan fortrydes).
+  - Svaret har også personer med ugens og afventende point og `viewer` (personen bag den indloggede bruger og om vedkommende kan godkende). Knapperne Godkend og Afvis vises kun for den, der kan godkende.
+- **Klokkeslæt** vises altid som 24-timers HH:MM i HA's tidszone, uafhængigt af browserens locale-data.
+- **Kortets indstillinger:** titel, standardfilter, dage i Kommende (tom: integrationens indstilling), vis Senere, vis Udført i dag og vis pointtavle.
+- Kortet registreres kun, når HA's frontend kører (`after_dependencies`), og adressen har versionen med, så en opdatering ikke hentes fra cache.
 
 ## 14. Byggetrin
 1. Datamodel og storage.

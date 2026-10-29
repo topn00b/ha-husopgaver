@@ -39,6 +39,9 @@ EVENT_NOT_NEEDED: Final = "husopgaver_not_needed"
 EVENT_APPROVAL_REQUESTED: Final = "husopgaver_approval_requested"
 EVENT_REJECTED: Final = "husopgaver_rejected"
 
+# Sendes ved enhver ændring, så dashboardkortet kan opdatere sig.
+SIGNAL_UPDATED: Final = f"{DOMAIN}_updated"
+
 # Knapper i notifikationer: "<præfiks><log_id>".
 ACTION_APPROVE_PREFIX: Final = "HUSOPGAVER_APPROVE_"
 ACTION_REJECT_PREFIX: Final = "HUSOPGAVER_REJECT_"

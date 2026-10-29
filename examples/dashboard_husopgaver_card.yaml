@@ -1,0 +1,21 @@
+# Køkkentablet med Husopgavers eget kort. Kortet følger med integrationen;
+# der skal ikke tilføjes en ressource.
+title: Køkken
+views:
+    - title: Husopgaver
+      path: husopgaver
+      type: panel
+      cards:
+          - type: custom:husopgaver-card
+            title: Husopgaver
+            show_later: true
+            show_done: true
+            show_points: true
+    - title: Kalender
+      path: kalender
+      cards:
+          - type: calendar
+            initial_view: listWeek
+            entities:
+                - calendar.familie
+                - calendar.husopgaver

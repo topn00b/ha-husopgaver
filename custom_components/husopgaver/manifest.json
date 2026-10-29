@@ -1,6 +1,11 @@
 {
   "domain": "husopgaver",
   "name": "Husopgaver",
+  "after_dependencies": [
+    "frontend",
+    "http",
+    "websocket_api"
+  ],
   "codeowners": [
     "@topn00b"
   ],
@@ -11,5 +16,5 @@
   "issue_tracker": "https://github.com/topn00b/ha-husopgaver",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

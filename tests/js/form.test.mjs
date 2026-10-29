@@ -120,3 +120,12 @@ test("fra opgave til formular og tilbage", () => {
   }
   assert.equal(choreToForm(chore({}), TODAY).hasCondition, true);
 });
+
+test("efter en anden opgave", () => {
+  assert.deepEqual(formToService(base({ freq: "after", after: "" })), { error: "err_after" });
+  const { data } = formToService(base({ freq: "after", after: "vask", delay: "1440" }));
+  assert.deepEqual([data.repeat, data.after, data.delay], ["after", "vask", { minutes: 1440 }]);
+  const form = choreToForm(chore({ repeat: "after", after: "vask", delay: 60 }), TODAY);
+  assert.deepEqual([form.freq, form.after, form.delay], ["after", "vask", 60]);
+  assert.deepEqual(formToService(form).data.delay, { minutes: 60 });
+});

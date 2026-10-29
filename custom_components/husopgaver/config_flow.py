@@ -265,7 +265,11 @@ def _duration(seconds: int | None) -> dict[str, int] | None:
     return {"days": days, "hours": hours, "minutes": minutes, "seconds": secs}
 
 
-def _schedule_schema(kind: ScheduleKind) -> vol.Schema:
+def _schedule_schema(
+    kind: ScheduleKind, others: list[SelectOptionDict] | None = None
+) -> vol.Schema:
+    """Felterne for gentagelsen. others: de opgaver, en opfølgende opgave kan følge efter."""
+    others = others or []
     match kind:
         case ScheduleKind.NONE:
             return vol.Schema({vol.Required("due"): DateTimeSelector()})
@@ -289,6 +293,17 @@ def _schedule_schema(kind: ScheduleKind) -> vol.Schema:
             return vol.Schema(
                 {vol.Required("dates"): TextSelector(TextSelectorConfig(multiple=True))}
             )
+        case ScheduleKind.AFTER:
+            return vol.Schema(
+                {
+                    vol.Required("after"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=others, mode=SelectSelectorMode.DROPDOWN
+                        )
+                    ),
+                    vol.Optional("delay"): DurationSelector(),
+                }
+            )
 
 
 def _schedule_from_input(
@@ -309,6 +324,9 @@ def _schedule_from_input(
             schedule["weekdays"] = [WEEKDAYS.index(d) for d in user_input["weekdays"]]
         case ScheduleKind.YEARLY:
             schedule["dates"] = [d.strip() for d in user_input["dates"] if d.strip()]
+        case ScheduleKind.AFTER:
+            schedule["after"] = user_input["after"]
+            schedule["delay"] = _seconds(user_input.get("delay")) or 0
     return schedule
 
 
@@ -324,6 +342,11 @@ def _schedule_suggested(schedule: Mapping[str, Any]) -> dict[str, Any]:
             return {"weekdays": [WEEKDAYS[d] for d in schedule["weekdays"]]}
         case ScheduleKind.YEARLY.value:
             return {"dates": list(schedule["dates"])}
+        case ScheduleKind.AFTER.value:
+            suggested: dict[str, Any] = {"after": schedule["after"]}
+            if (delay := _duration(schedule.get("delay"))) is not None:
+                suggested["delay"] = delay
+            return suggested
     return {}
 
 
@@ -472,6 +495,19 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         return self._schedule(user_input)
 
+    async def async_step_schedule_after(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        return self._schedule(user_input)
+
+    def _other_chores(self) -> list[SelectOptionDict]:
+        own = self._subentry.subentry_id if self._subentry else None
+        return [
+            SelectOptionDict(value=sid, label=subentry.title)
+            for sid, subentry in self._get_entry().subentries.items()
+            if subentry.subentry_type == SUBENTRY_CHORE and sid != own
+        ]
+
     @callback
     def _schedule(self, user_input: dict[str, Any] | None) -> SubentryFlowResult:
         errors: dict[str, str] = {}
@@ -502,7 +538,7 @@ class ChoreSubentryFlow(ConfigSubentryFlow):
         return self.async_show_form(
             step_id=f"schedule_{self._kind.value}",
             data_schema=self.add_suggested_values_to_schema(
-                _schedule_schema(self._kind), suggested
+                _schedule_schema(self._kind, self._other_chores()), suggested
             ),
             errors=errors,
             description_placeholders=placeholders,

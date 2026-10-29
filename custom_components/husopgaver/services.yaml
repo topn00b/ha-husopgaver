@@ -110,6 +110,7 @@ create_chore:
           - interval
           - weekly
           - yearly
+          - after
     due:
       selector:
         datetime:
@@ -151,6 +152,12 @@ create_chore:
       selector:
         text:
           multiple: true
+    after:
+      selector:
+        text:
+    delay:
+      selector:
+        duration:
     due_time:
       selector:
         time:
@@ -213,6 +220,7 @@ update_chore:
           - interval
           - weekly
           - yearly
+          - after
     due:
       selector:
         datetime:
@@ -254,6 +262,12 @@ update_chore:
       selector:
         text:
           multiple: true
+    after:
+      selector:
+        text:
+    delay:
+      selector:
+        duration:
     due_time:
       selector:
         time:

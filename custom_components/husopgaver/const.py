@@ -72,6 +72,7 @@ class ScheduleKind(StrEnum):
     INTERVAL = "interval"
     WEEKLY = "weekly"
     YEARLY = "yearly"
+    AFTER = "after"  # forfalder, når en anden opgave er udført
 
 
 class IntervalUnit(StrEnum):

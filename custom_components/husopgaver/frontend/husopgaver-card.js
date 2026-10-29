@@ -79,8 +79,14 @@ const TEXTS = {
       biweekly: "Hver 2. uge",
       monthly: "Hver måned",
       yearly: "Hvert år",
+      after: "Efter en anden opgave",
       custom: "Andet",
     },
+    f_after: "Efter hvilken opgave?",
+    f_delay: "Hvornår?",
+    delays: { 0: "Med det samme", 60: "1 time efter", 180: "3 timer efter", 1440: "Dagen efter" },
+    choose: "Vælg…",
+    err_after: "Vælg den opgave, den kommer efter.",
     weekdays: ["Ma", "Ti", "On", "To", "Fr", "Lø", "Sø"],
     f_date: "Dato",
     f_time: "Klokkeslæt (valgfrit)",
@@ -165,8 +171,14 @@ const TEXTS = {
       biweekly: "Every 2 weeks",
       monthly: "Every month",
       yearly: "Every year",
+      after: "After another chore",
       custom: "Other",
     },
+    f_after: "After which chore?",
+    f_delay: "When?",
+    delays: { 0: "Right away", 60: "1 hour after", 180: "3 hours after", 1440: "The day after" },
+    choose: "Choose…",
+    err_after: "Choose the chore it comes after.",
     weekdays: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
     f_date: "Date",
     f_time: "Time (optional)",
@@ -290,7 +302,17 @@ export function pointsBoard(persons) {
 }
 
 export const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-export const FREQUENCIES = ["once", "daily", "weekdays", "weekly", "biweekly", "monthly", "yearly", "custom"];
+export const FREQUENCIES = [
+  "once",
+  "daily",
+  "weekdays",
+  "weekly",
+  "biweekly",
+  "monthly",
+  "yearly",
+  "after",
+  "custom",
+];
 
 // Faste valg i dialogen, og hvordan de svarer til en interval-gentagelse.
 const INTERVAL_PRESETS = {
@@ -320,6 +342,8 @@ export function newForm(todayIso, personId) {
     notify: 0,
     approval: "auto",
     hasCondition: false,
+    after: "",
+    delay: 0,
   };
 }
 
@@ -351,6 +375,11 @@ export function choreToForm(chore, todayIso) {
       form.freq = "yearly";
       form.date = `${todayIso.slice(0, 4)}-${chore.dates[0]}`;
       form.extraDates = chore.dates.slice(1);
+      break;
+    case "after":
+      form.freq = "after";
+      form.after = chore.after || "";
+      form.delay = chore.delay || 0;
       break;
     case "interval": {
       const preset = Object.entries(INTERVAL_PRESETS).find(
@@ -399,6 +428,14 @@ export function formToService(form) {
     case "yearly":
       if (!form.date) return { error: "err_date" };
       Object.assign(data, { repeat: "yearly", dates: [form.date.slice(5), ...form.extraDates] });
+      break;
+    case "after":
+      if (!form.after) return { error: "err_after" };
+      Object.assign(data, {
+        repeat: "after",
+        after: form.after,
+        delay: { minutes: Number(form.delay) || 0 },
+      });
       break;
     case "custom":
       Object.assign(data, {
@@ -507,7 +544,7 @@ const STYLE = `
   .form h2 { margin: 0; font-size: 1.15em; font-weight: 500; color: var(--primary-text-color); }
   .field { display: grid; gap: 6px; }
   .label { font-size: 0.9em; color: var(--secondary-text-color); }
-  .form input, .form textarea {
+  .form input, .form textarea, .form select {
     box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 8px;
     border: 1px solid var(--divider-color); background: var(--secondary-background-color, transparent);
     color: var(--primary-text-color); font: inherit;
@@ -976,6 +1013,22 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
         ).join("")}</div>`;
       } else if (form.freq === "once" || form.freq === "yearly") {
         freqDetails = field(t.f_date, `<input type="date" data-field="date" value="${escapeHtml(form.date)}">`);
+      } else if (form.freq === "after") {
+        const others = (this._data.chores || []).filter((c) => c.id !== form.id);
+        freqDetails = `
+          ${field(
+            t.f_after,
+            `<select data-field="after">
+              <option value="">${t.choose}</option>
+              ${others
+                .map(
+                  (c) =>
+                    `<option value="${escapeHtml(c.id)}" ${c.id === form.after ? "selected" : ""}>${escapeHtml(c.name)}</option>`,
+                )
+                .join("")}
+            </select>`,
+          )}
+          ${field(t.f_delay, `<div class="chips">${Object.entries(t.delays).map(([v, label]) => set("delay", v, label)).join("")}</div>`)}`;
       } else if (form.freq === "custom") {
         freqDetails = `
           <div class="inline">

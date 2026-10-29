@@ -175,6 +175,8 @@ def _chore_config(chore: Chore) -> dict[str, Any]:
         "from": None if schedule.from_ is None else schedule.from_.value,
         "weekdays": [WEEKDAYS[d] for d in schedule.weekdays],
         "dates": [f"{m:02d}-{d:02d}" for m, d in schedule.dates],
+        "after": schedule.after,
+        "delay": int(schedule.delay.total_seconds() // 60),
         "due": None
         if schedule.due is None
         else dt_util.as_local(schedule.due).strftime("%Y-%m-%d %H:%M"),

@@ -58,6 +58,15 @@ Kræver Home Assistant 2026.10 eller nyere.
 
 Krydser en anden af end den tildelte, går pointene til den, der krydsede af.
 
+### Opfølgende opgaver
+Vælg **Hvor tit? → Efter en anden opgave** for en opgave, der kommer efter en anden, fx:
+
+1. **Vask tøj** (hver onsdag).
+2. **Hæng vasketøj op**: efter "Vask tøj", med det samme, "den, der har tid".
+3. **Tag vasketøj ned**: efter "Hæng vasketøj op", dagen efter.
+
+Den opfølgende opgave dukker op, når den forrige er krydset af, og venter igen, når den selv er lavet. Fortrydes afkrydsningen, forsvinder den opfølgende opgave igen.
+
 ### Godkendelse
 Når et barn krydser af, afventer opgaven godkendelse og giver først point, når en voksen godkender. Det kan gøres:
 - på listen `todo.husopgaver_godkendelse`,

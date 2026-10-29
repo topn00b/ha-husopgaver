@@ -289,6 +289,14 @@
         "builtin_notify": {
           "name": "Indbygget notifikation",
           "description": "Send notifikationer til personens telefon."
+        },
+        "after": {
+          "name": "Efter",
+          "description": "Opgaven, den følger efter. Den bliver forfalden, når den opgave er krydset af."
+        },
+        "delay": {
+          "name": "Ventetid",
+          "description": "Valgfri ventetid, efter den anden opgave er krydset af, fx 1 dag."
         }
       }
     },
@@ -367,6 +375,14 @@
         "builtin_notify": {
           "name": "Indbygget notifikation",
           "description": "Send notifikationer til personens telefon."
+        },
+        "after": {
+          "name": "Efter",
+          "description": "Opgaven, den følger efter. Den bliver forfalden, når den opgave er krydset af."
+        },
+        "delay": {
+          "name": "Ventetid",
+          "description": "Valgfri ventetid, efter den anden opgave er krydset af, fx 1 dag."
         }
       }
     },
@@ -396,7 +412,8 @@
         "none": "Engangs",
         "interval": "Interval",
         "weekly": "Ugentlig",
-        "yearly": "Årlig"
+        "yearly": "Årlig",
+        "after": "Efter en anden opgave"
       }
     },
     "unit": {
@@ -627,6 +644,17 @@
           "data_description": {
             "active_state": "Ellers er opgaven ikke nødvendig.",
             "check_time": "Hvornår på forfaldsdagen entiteten tjekkes."
+          }
+        },
+        "schedule_after": {
+          "title": "Efter en anden opgave",
+          "data": {
+            "after": "Efter",
+            "delay": "Ventetid"
+          },
+          "data_description": {
+            "after": "Opgaven, den følger efter. Den bliver forfalden, når den opgave er krydset af.",
+            "delay": "Valgfri ventetid, efter den anden opgave er krydset af, fx 1 dag."
           }
         }
       },

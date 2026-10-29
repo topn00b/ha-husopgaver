@@ -65,7 +65,15 @@ from .const import (
 )
 from .models import Chore, ChoreState, Condition, LogEntry, Occurrence, Person
 from .points import credited_entries, pending_entries
-from .schedule import due_window, first_due, local_date, local_datetime, next_due, status
+from .schedule import (
+    due_window,
+    first_due,
+    followup_due,
+    local_date,
+    local_datetime,
+    next_due,
+    status,
+)
 from .storage import HusopgaverStorage
 from .texts import text
 
@@ -561,6 +569,7 @@ class HusopgaverCoordinator:
             self._notify_approvers(chore, person, entry)
         else:
             self._advance(chore, key, entry, completed_at=now, now=now)
+            self._trigger_followups(chore, completed_at=now, now=now)
             self._fire(EVENT_COMPLETED, chore, doer, due, entry.id)
         self._refresh(now)
         return entry
@@ -671,6 +680,7 @@ class HusopgaverCoordinator:
             due = effective_due(occ)
             # Næste forfald regnes fra, hvornår opgaven blev lavet, ikke godkendt.
             self._advance(chore, key, entry, completed_at=pending.timestamp, now=now)
+            self._trigger_followups(chore, completed_at=pending.timestamp, now=now)
             self._fire(EVENT_COMPLETED, chore, pending.person_id, due, entry.id)
         else:
             # Opgaven er slettet eller ændret: pointene gives stadig.
@@ -839,7 +849,52 @@ class HusopgaverCoordinator:
         return {
             "occurrence": state.occurrences[key].to_dict(),
             "rr_index": state.rr_index,
+            # Opfølgende opgaver, så en fortrudt afkrydsning også trækker dem tilbage.
+            "followups": {
+                followup.id: self.storage.chore_states[followup.id].to_dict()
+                for followup in self._followups(chore)
+                if followup.id in self.storage.chore_states
+            },
         }
+
+    def _followups(self, chore: Chore) -> list[Chore]:
+        """Opgaver, der følger efter denne."""
+        return [
+            c
+            for c in self.chores.values()
+            if c.schedule.kind is ScheduleKind.AFTER and c.schedule.after == chore.id
+        ]
+
+    @callback
+    def _trigger_followups(self, chore: Chore, completed_at: datetime, now: datetime) -> None:
+        """Gør de opfølgende opgaver forfaldne. En, der allerede venter, rykkes ikke."""
+        for followup in self._followups(chore):
+            state = self.storage.chore_states.get(followup.id)
+            if state is None:
+                continue
+            due = followup_due(followup, completed_at)
+            rr_index = state.rr_index
+            for key, occ in state.occurrences.items():
+                if occ.next_due is not None:
+                    continue
+                assignee = occ.assignee
+                if key == SHARED_OCCURRENCE and followup.assignment not in (
+                    Assignment.EACH,
+                    Assignment.OPEN,
+                ):
+                    assignee, rr_index = self._assign(followup, rr_index, now)
+                state = state.with_occurrence(
+                    key,
+                    replace(
+                        occ,
+                        next_due=due,
+                        assignee=assignee,
+                        snoozed_until=None,
+                        notified=(),
+                        condition_state=None,
+                    ),
+                )
+            self.storage.set_chore_state(followup.id, replace(state, rr_index=rr_index))
 
     @callback
     def _restore(self, chore: Chore, key: str, snapshot: dict[str, Any]) -> None:
@@ -850,6 +905,11 @@ class HusopgaverCoordinator:
         self.storage.set_chore_state(
             chore.id, replace(restored, rr_index=int(snapshot["rr_index"]))
         )
+        for followup_id, followup_state in snapshot.get("followups", {}).items():
+            if followup_id in self.chores:
+                self.storage.set_chore_state(
+                    followup_id, ChoreState.from_dict(followup_state)
+                )
 
     @callback
     def _set_occurrence(self, chore: Chore, key: str, occurrence: Occurrence) -> None:

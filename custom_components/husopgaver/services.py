@@ -51,6 +51,8 @@ _CHORE_FIELDS: dict[vol.Marker, Any] = {
     vol.Optional("from"): vol.In([f.value for f in IntervalFrom]),
     vol.Optional("weekdays"): cv.weekdays,
     vol.Optional("dates"): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional("after"): cv.string,
+    vol.Optional("delay"): cv.time_period,
     vol.Optional("due_time"): vol.Any(None, cv.time),
     vol.Optional("notify_before"): vol.Any(None, cv.time_period),
     vol.Optional("complete_window"): vol.Any(None, cv.time_period),
@@ -155,6 +157,10 @@ def _apply_fields(
         schedule["weekdays"] = [WEEKDAYS.index(day) for day in fields["weekdays"]]
     if "due" in fields:
         schedule["due"] = _as_utc_iso(fields["due"])
+    if "after" in fields:
+        schedule["after"] = coordinator.resolve_chore(fields["after"]).id
+    if "delay" in fields:
+        schedule["delay"] = _seconds(fields["delay"])
     data["schedule"] = schedule
     return data
 

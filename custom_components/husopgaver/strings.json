@@ -289,6 +289,14 @@
         "builtin_notify": {
           "name": "Built-in notification",
           "description": "Send notifications to the person's phone."
+        },
+        "after": {
+          "name": "After",
+          "description": "The chore it follows. It becomes due when that chore is completed."
+        },
+        "delay": {
+          "name": "Wait",
+          "description": "Optional wait after the other chore is completed, e.g. 1 day."
         }
       }
     },
@@ -367,6 +375,14 @@
         "builtin_notify": {
           "name": "Built-in notification",
           "description": "Send notifications to the person's phone."
+        },
+        "after": {
+          "name": "After",
+          "description": "The chore it follows. It becomes due when that chore is completed."
+        },
+        "delay": {
+          "name": "Wait",
+          "description": "Optional wait after the other chore is completed, e.g. 1 day."
         }
       }
     },
@@ -396,7 +412,8 @@
         "none": "One-off",
         "interval": "Interval",
         "weekly": "Weekly",
-        "yearly": "Yearly"
+        "yearly": "Yearly",
+        "after": "After another chore"
       }
     },
     "unit": {
@@ -627,6 +644,17 @@
           "data_description": {
             "active_state": "Otherwise the chore is not needed.",
             "check_time": "When on the due day the entity is checked."
+          }
+        },
+        "schedule_after": {
+          "title": "After another chore",
+          "data": {
+            "after": "After",
+            "delay": "Wait"
+          },
+          "data_description": {
+            "after": "The chore it follows. It becomes due when that chore is completed.",
+            "delay": "Optional wait after the other chore is completed, e.g. 1 day."
           }
         }
       },

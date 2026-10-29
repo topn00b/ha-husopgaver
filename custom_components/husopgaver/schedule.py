@@ -94,7 +94,20 @@ def first_due(chore: Chore, now: datetime) -> datetime | None:
     """
     if chore.schedule.kind is ScheduleKind.NONE:
         return chore.schedule.due
+    if chore.schedule.kind is ScheduleKind.AFTER:
+        return None  # venter på den opgave, den følger efter
     return _first_matching(chore, local_date(now), now)
+
+
+def followup_due(chore: Chore, completed_at: datetime) -> datetime:
+    """Forfald for en opfølgende opgave, når den opgave, den følger efter, er udført.
+
+    Med klokkeslæt: på det klokkeslæt den dag, ventetiden løber ud.
+    """
+    ready = completed_at + chore.schedule.delay
+    if chore.due_time is None:
+        return ready
+    return local_datetime(local_date(ready), chore.due_time)
 
 
 def next_due(
@@ -111,8 +124,8 @@ def next_due(
     tid, tæller det for den forekomst, der var forfalden.
     """
     schedule = chore.schedule
-    if schedule.kind is ScheduleKind.NONE:
-        return None
+    if schedule.kind in (ScheduleKind.NONE, ScheduleKind.AFTER):
+        return None  # engangs; eller venter på næste udførelse af forgængeren
 
     # Datoer før i dag ligger altid før now.
     earliest = max(local_date(previous_due) + timedelta(days=1), local_date(now))

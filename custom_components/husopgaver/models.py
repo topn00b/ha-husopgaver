@@ -157,10 +157,21 @@ class Schedule:
     from_: IntervalFrom | None = None
     weekdays: tuple[int, ...] = ()  # mandag = 0
     dates: tuple[tuple[int, int], ...] = ()  # (måned, dag)
+    after: str | None = None  # kun for "after": opgaven, den følger efter
+    delay: timedelta = timedelta(0)  # kun for "after": ventetid efter udførelse
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
         kind = ScheduleKind(data["kind"])
+        if kind is ScheduleKind.AFTER:
+            after = data.get("after")
+            if not after:
+                raise ValueError("En opfølgende opgave skal følge efter en anden opgave")
+            return cls(
+                kind=kind,
+                after=str(after),
+                delay=_duration_from(data.get("delay")) or timedelta(0),
+            )
         if kind is ScheduleKind.NONE:
             due = _dt_from_str(data.get("due"))
             if due is None:
@@ -204,6 +215,12 @@ class Schedule:
                 return {
                     "kind": self.kind.value,
                     "dates": [f"{m:02d}-{d:02d}" for m, d in self.dates],
+                }
+            case ScheduleKind.AFTER:
+                return {
+                    "kind": self.kind.value,
+                    "after": self.after,
+                    "delay": _duration_to(self.delay),
                 }
 
 
@@ -289,6 +306,9 @@ class Chore:
         if not assignees:
             raise ValueError("En opgave skal have mindst én person")
         condition = data.get("condition")
+        schedule = Schedule.from_dict(data["schedule"])
+        if schedule.after == chore_id:
+            raise ValueError("En opgave kan ikke følge efter sig selv")
         return cls(
             id=chore_id,
             name=name,
@@ -296,7 +316,7 @@ class Chore:
             points=points,
             assignees=assignees,
             assignment=Assignment(data.get("assignment", Assignment.LEAST_POINTS)),
-            schedule=Schedule.from_dict(data["schedule"]),
+            schedule=schedule,
             due_time=_time_from_str(data.get("due_time")),
             notify_before=_duration_from(data.get("notify_before")),
             complete_window=_duration_from(data.get("complete_window")),

@@ -225,6 +225,8 @@ async def test_chore_configs_for_the_card(hass, setup) -> None:
         "from": None,
         "weekdays": ["mon", "thu"],
         "dates": [],
+        "after": None,
+        "delay": 0,
         "due": None,
         "due_time": "18:00",
         "notify_before": 30,

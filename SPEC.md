@@ -69,6 +69,7 @@ Strategierne:
 | `interval` | `every` (int), `unit` (`day`/`week`/`month`), `from` (`due`/`completion`) |
 | `weekly` | `weekdays` (0–6, mandag = 0) |
 | `yearly` | `dates` (liste af `MM-DD`) |
+| `after` | `after` (opgavens id), `delay` (sekunder, standard 0). Opfølgende opgave, fx vask tøj → hæng op → tag ned. |
 
 ### Runtime-tilstand per opgave (og per person ved `each`)
 - `next_due` (UTC)
@@ -105,6 +106,10 @@ En `pending`-post giver ingen point. Først en `approved`-post med `ref` til den
 - **Ingen ophobning:** En overskredet, tilbagevendende opgave er én forekomst, uanset hvor mange intervaller der er gået.
 
 ### Næste forfald
+- **`after` (opfølgende opgave):** Venter uden forfald, indtil opgaven, den følger efter, er krydset af (`completed`, eller `approved` efter godkendelse). Så er forfaldet tidspunktet, den blev lavet, plus `delay`; har den et klokkeslæt, er det det klokkeslæt den dag. Når den selv er krydset af, venter den igen. Kæder kan være så lange, man vil.
+  - En opfølgende opgave, der allerede venter på at blive lavet, rykkes ikke af en ny udførelse af forgængeren.
+  - Spring over og "ikke nødvendig" udløser ikke den næste. Fortrydes afkrydsningen, trækkes den opfølgende opgave tilbage.
+  - En opgave kan ikke følge efter sig selv. Ændres gentagelsen, nulstilles den til at vente.
 - **Første forfald** for en ny opgave: den første dag fra i dag, der passer til gentagelsen. Er `due_time` allerede passeret i dag, bliver det næste passende dag.
 - `interval` / `from: due` regnes fra seriens startdato (`anchor`), så en månedlig opgave den 31. vender tilbage til den 31.
 - `interval` / `from: due`: `next = previous_due + every`. Datoer, der er sprunget over, hoppes frem, indtil `next > now`.

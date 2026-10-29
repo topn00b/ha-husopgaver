@@ -26,7 +26,7 @@ Kræver Home Assistant 2026.10 eller nyere.
    - Knyt personen til en person i Home Assistant. Det bruges til fravær og til at vide, hvem der må godkende.
    - Sæt **Kan godkende** for de voksne og **Afkrydsninger skal godkendes** for børnene.
    - Vælg evt. en farve til dashboardkortet og et notify-mål til notifikationer.
-3. Læg dashboardkortet på et dashboard (se [Dashboard](#dashboard)), og opret opgaverne med **+ Ny opgave** i kortet.
+3. Åbn **Husopgaver** i sidemenuen. Siden kommer automatisk for alle brugere, også i companion-appen. Opret opgaverne med **+ Ny opgave**.
 4. Kalender- og entitetsbetingelser, vindue for afkrydsning og indbyggede notifikationer sættes på integrationssiden: **⋮ → Add chore / Tilføj opgave**, eller tandhjulet på en opgave.
 
 **Konfigurer** på integrationen har indstillingerne:
@@ -132,6 +132,8 @@ Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `no
 Påmindelser laves som almindelige automationer på eventsene, se [eksemplet](examples/automation_paamindelse.yaml). Alternativt kan "Indbyggede notifikationer" slås til per opgave.
 
 ## Dashboard
+
+**Husopgaver i sidemenuen** kommer automatisk, når integrationen er sat op. Den viser dashboardkortet på hele siden for alle brugere, så der er intet dashboard at lave. Vil du også have kortet på et af dine egne dashboards, så brug kortet herunder.
 
 - **Dashboardkortet** `custom:husopgaver-card` følger med integrationen og kræver ingen ekstra installation. Det viser opgaverne grupperet som Afventer godkendelse, Overskredet, I dag, Kommende og Senere, med personfilter, afkrydsning med ét tryk og pointtavle.
   - **"+ Ny opgave"** i kortet opretter en opgave med få tryk: hvad, hvem, hvor tit. Tryk på en opgaves navn for at rette eller slette den. Det er den nemmeste måde at oprette opgaver på, også for resten af familien.

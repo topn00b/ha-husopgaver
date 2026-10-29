@@ -4,6 +4,7 @@
 
 const CARD_TYPE = "husopgaver-card";
 const EDITOR_TYPE = "husopgaver-card-editor";
+const PANEL_TYPE = "husopgaver-panel";
 
 // Fast palet, når en person ikke har en farve. Læsbar i lyst og mørkt tema.
 export const PALETTE = [
@@ -1098,6 +1099,68 @@ if (typeof customElements !== "undefined" && !customElements.get(CARD_TYPE)) {
     }
   }
 
+  // Siden "Husopgaver" i sidemenuen: kortet på hele siden, uden dashboard-opsætning.
+  class HusopgaverPanel extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this.shadowRoot.addEventListener("click", (ev) => {
+        if (ev.target.closest?.("[data-action='menu-toggle']")) {
+          this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
+        }
+      });
+    }
+
+    set hass(hass) {
+      this._hass = hass;
+      this._ensure();
+      this._card.hass = hass;
+    }
+
+    set narrow(narrow) {
+      this._narrow = narrow;
+      if (this._card) this._renderToolbar();
+    }
+
+    set panel(panel) {
+      this._panel = panel;
+    }
+
+    _ensure() {
+      if (this._card) return;
+      this.shadowRoot.innerHTML = `
+        <style>
+          :host { display: block; min-height: 100vh; background: var(--primary-background-color); }
+          .toolbar {
+            display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 12px;
+            background: var(--app-header-background-color, var(--primary-color));
+            color: var(--app-header-text-color, var(--text-primary-color, #fff));
+            font-size: 20px; position: sticky; top: 0; z-index: 2;
+          }
+          .toolbar button {
+            width: 48px; height: 48px; border: none; border-radius: 24px; background: none;
+            color: inherit; font-size: 22px; cursor: pointer;
+          }
+          .content { padding: 16px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
+        </style>
+        <div class="toolbar"></div>
+        <div class="content"></div>`;
+      this._card = document.createElement(CARD_TYPE);
+      // Titlen står i værktøjslinjen, så kortet viser den ikke igen.
+      this._card.setConfig({ title: "" });
+      this.shadowRoot.querySelector(".content").appendChild(this._card);
+      this._renderToolbar();
+    }
+
+    _renderToolbar() {
+      const toolbar = this.shadowRoot.querySelector(".toolbar");
+      toolbar.innerHTML = `${
+        this._narrow ? `<button data-action="menu-toggle" aria-label="Menu">☰</button>` : ""
+      }<span>Husopgaver</span>`;
+    }
+  }
+
+  customElements.define(PANEL_TYPE, HusopgaverPanel);
   customElements.define(CARD_TYPE, HusopgaverCard);
   customElements.define(EDITOR_TYPE, HusopgaverCardEditor);
   window.customCards = window.customCards || [];

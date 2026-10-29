@@ -175,12 +175,22 @@ async def test_card_not_registered_without_frontend(hass: HomeAssistant) -> None
 async def test_card_registered_with_frontend(hass: HomeAssistant) -> None:
     hass.config.components.add("frontend")
     hass.http = Mock(async_register_static_paths=AsyncMock())
-    with patch("homeassistant.components.frontend.add_extra_js_url") as add_js:
+    with (
+        patch("homeassistant.components.frontend.add_extra_js_url") as add_js,
+        patch("homeassistant.components.panel_custom.async_register_panel") as panel,
+    ):
         assert await async_register_card(hass)
     (config,) = hass.http.async_register_static_paths.call_args.args[0]
     assert config.url_path == URL_BASE and config.path == str(CARD_DIR)
     url = add_js.call_args.args[1]
     assert url.startswith(f"{URL_BASE}/{CARD_FILE}?v=")
+    # Siden i sidemenuen for alle brugere, med samme modul.
+    kwargs = panel.call_args.kwargs
+    assert kwargs["frontend_url_path"] == "husopgaver"
+    assert kwargs["webcomponent_name"] == "husopgaver-panel"
+    assert kwargs["sidebar_title"] == "Husopgaver"
+    assert kwargs["module_url"] == url
+    assert kwargs["require_admin"] is False
 
 
 async def test_midnight_moves_groups(hass, setup, freezer) -> None:

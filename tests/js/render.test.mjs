@@ -16,11 +16,26 @@ globalThis.HTMLElement = class {
       addEventListener: (type, fn) => listeners[type].push(fn),
       click: (target) => listeners.click.forEach((fn) => fn({ target })),
       input: (target) => listeners.input.forEach((fn) => fn({ target })),
+      // Til panelet: faste underelementer.
+      parts: {},
+      querySelector(selector) {
+        this.parts[selector] ??= { innerHTML: "", children: [], appendChild(c) { this.children.push(c); } };
+        return this.parts[selector];
+      },
     };
     return this.shadowRoot;
   }
   get isConnected() {
     return true;
+  }
+};
+globalThis.document = {
+  createElement: (name) => new (registry.get(name))(),
+};
+globalThis.Event = class {
+  constructor(type, options) {
+    this.type = type;
+    Object.assign(this, options);
   }
 };
 globalThis.localStorage = {
@@ -190,4 +205,22 @@ test("redigering kan slås fra", async () => {
   await new Promise((r) => setTimeout(r));
   push(PAYLOAD);
   assert.doesNotMatch(card.shadowRoot.innerHTML, /class="add"|data-chore=/);
+});
+
+test("siden i sidemenuen viser kortet uden titel og med menuknap på smal skærm", async () => {
+  const Panel = customElements.get("husopgaver-panel");
+  const panel = new Panel();
+  const events = [];
+  panel.dispatchEvent = (ev) => events.push(ev.type);
+  panel.narrow = true;
+  const { card: probe } = makeCard();
+  panel.hass = { ...probe._hass };
+  const card = panel.shadowRoot.querySelector(".content").children[0];
+  assert.equal(card.constructor, customElements.get("husopgaver-card"));
+  assert.equal(card._config.title, "");
+  assert.match(panel.shadowRoot.querySelector(".toolbar").innerHTML, /menu-toggle/);
+  panel.shadowRoot.click({ closest: () => ({}) });
+  assert.deepEqual(events, ["hass-toggle-menu"]);
+  panel.narrow = false;
+  assert.doesNotMatch(panel.shadowRoot.querySelector(".toolbar").innerHTML, /menu-toggle/);
 });

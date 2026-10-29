@@ -4,6 +4,7 @@
   "after_dependencies": [
     "frontend",
     "http",
+    "panel_custom",
     "websocket_api"
   ],
   "codeowners": [
@@ -16,5 +17,5 @@
   "issue_tracker": "https://github.com/topn00b/ha-husopgaver",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.4.0"
+  "version": "0.5.0"
 }

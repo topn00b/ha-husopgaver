@@ -12,10 +12,14 @@ from .const import DOMAIN
 URL_BASE = "/husopgaver_static"
 CARD_FILE = "husopgaver-card.js"
 CARD_DIR = Path(__file__).parent / "frontend"
+PANEL_URL = "husopgaver"
+PANEL_ELEMENT = "husopgaver-panel"
 
 
 async def async_register_card(hass: HomeAssistant) -> bool:
-    """Server kortet og indlæs det i frontend. Kræver ingen ressource-opsætning.
+    """Server kortet, indlæs det i frontend og vis det i sidemenuen.
+
+    Kræver ingen ressource- eller dashboard-opsætning.
 
     Returnerer False, hvis frontend ikke kører (fx i tests).
     """
@@ -30,5 +34,26 @@ async def async_register_card(hass: HomeAssistant) -> bool:
         [StaticPathConfig(URL_BASE, str(CARD_DIR), cache_headers=False)]
     )
     # Versionen i adressen sørger for, at en opdatering ikke hentes fra cache.
-    add_extra_js_url(hass, f"{URL_BASE}/{CARD_FILE}?v={integration.version}")
+    url = f"{URL_BASE}/{CARD_FILE}?v={integration.version}"
+    add_extra_js_url(hass, url)
+    await async_register_panel(hass, url)
     return True
+
+
+async def async_register_panel(hass: HomeAssistant, module_url: str) -> None:
+    """Punktet "Husopgaver" i sidemenuen for alle brugere, med kortet på hele siden.
+
+    Så er der intet dashboard at sætte op.
+    """
+    from homeassistant.components import panel_custom  # noqa: PLC0415
+
+    await panel_custom.async_register_panel(
+        hass,
+        frontend_url_path=PANEL_URL,
+        webcomponent_name=PANEL_ELEMENT,
+        sidebar_title="Husopgaver",
+        sidebar_icon="mdi:broom",
+        module_url=module_url,
+        require_admin=False,
+        config={},
+    )

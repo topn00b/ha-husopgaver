@@ -266,6 +266,7 @@ Data: `chore_id`, `chore_name`, `person_id`, `person_name`, `person_entity`, `no
 Et eget Lovelace-kort, der følger med integrationen. Opdelingen er inspireret af Donetick, men kode og design er vores eget.
 
 - **Levering:** Kortet ligger i integrationen (`custom_components/husopgaver/frontend/`) og registreres automatisk som frontend-modul, når integrationen indlæses. Der kræves ingen ekstra installation i HACS og ingen ressource-opsætning.
+- **Sidemenu:** Integrationen tilføjer siden "Husopgaver" (`/husopgaver`, ikon `mdi:broom`) i sidemenuen for alle brugere, med kortet på hele siden. Så er der intet dashboard at sætte op. Kortet kan desuden lægges på egne dashboards.
 - **Teknik:** Et rent web component uden byggetrin, CDN eller eksterne biblioteker. Det kører 100 % lokalt.
 - **Data:** Websocket-kommandoen `husopgaver/occurrences` giver forekomsterne med status, person, point og forfald. Med en abonnements-variant opdateres kortet straks ved ændringer, uden polling.
 - **Grupper:** Afventer godkendelse, Overskredet, I dag, Kommende (inden for vinduet) og Senere. Senere er sammenklappet som standard. Tomme grupper skjules.
